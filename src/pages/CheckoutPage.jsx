@@ -11,10 +11,16 @@ function validContact(value) {
   return email || phone;
 }
 
+function createOrderId() {
+  if (globalThis.crypto && globalThis.crypto.randomUUID) return globalThis.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ nombre: "", contacto: "", notas: "" });
+  const [form, setForm] = useState({ nombre: "", contacto: "", direccion: "", notas: "" });
+  const [orderId] = useState(createOrderId);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -29,10 +35,13 @@ export default function CheckoutPage() {
     setError("");
     if (!form.nombre.trim()) return setError("Escribe tu nombre.");
     if (!validContact(form.contacto)) return setError("Introduce un email o teléfono válido.");
+    if (!form.direccion.trim()) return setError("Introduce la dirección de entrega.");
 
     const order = {
+      orderId,
       nombre: form.nombre.trim(),
       contacto: form.contacto.trim(),
+      direccion: form.direccion.trim(),
       notas: form.notas.trim(),
       items: items.map(({ id, nombre, precio, cantidad }) => ({ id, nombre, precio, cantidad })),
       total: Number(total.toFixed(2))
@@ -55,9 +64,10 @@ export default function CheckoutPage() {
       <div>
         <p className="eyebrow">Último paso</p><h1>Finalizar pedido</h1>
         <form className="checkout-form" onSubmit={submit}>
-          <label className="field"><span>Nombre *</span><input name="nombre" value={form.nombre} onChange={update} required /></label>
-          <label className="field"><span>Email o teléfono *</span><input name="contacto" value={form.contacto} onChange={update} required /></label>
-          <label className="field"><span>Notas (opcional)</span><textarea name="notas" rows="4" value={form.notas} onChange={update} /></label>
+          <label className="field"><span>Nombre *</span><input name="nombre" value={form.nombre} onChange={update} maxLength="120" required /></label>
+          <label className="field"><span>Email o teléfono *</span><input name="contacto" value={form.contacto} onChange={update} maxLength="160" required /></label>
+          <label className="field"><span>Dirección de entrega *</span><textarea name="direccion" rows="2" value={form.direccion} onChange={update} maxLength="300" required /></label>
+          <label className="field"><span>Notas (opcional)</span><textarea name="notas" rows="4" value={form.notas} onChange={update} maxLength="1000" /></label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button button-primary button-full" disabled={sending}>
             {sending ? <><span className="spinner" /> Enviando pedido…</> : "Confirmar pedido"}
