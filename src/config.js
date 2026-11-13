@@ -1,4 +1,4 @@
-// Completa estos valores antes de publicar la aplicación.
+// Configuración pública. Nunca colocar contraseñas, hashes ni tokens aquí.
 export const CONFIG = {
   CSV_URL: "[PEGAR_URL_CSV]",
   APPS_SCRIPT_URL: "[PEGAR_URL_APPS_SCRIPT]",
