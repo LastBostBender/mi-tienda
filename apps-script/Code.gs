@@ -2,7 +2,7 @@
  * Registra pedidos y valida precios contra la pestaña Productos.
  * El navegador nunca determina el precio ni el total definitivo.
  */
-const SPREADSHEET_ID = "PEGAR_ID_DE_LA_HOJA";
+const SPREADSHEET_ID = "https://docs.google.com/spreadsheets/d/17gbBJ2ScPe5_LlSMnggPgSgoJjOemartut7K-OM96V4/edit?usp=drivesdk";
 
 function jsonResponse(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload))
