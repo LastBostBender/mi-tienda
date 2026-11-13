@@ -1,0 +1,8 @@
+import "../styles-admin.css";
+import { useState } from "react";
+import { apiRequest } from "../utils/api";
+export default function SubscribeForm() {
+  const [email,setEmail]=useState(""); const [accepted,setAccepted]=useState(false); const [message,setMessage]=useState(""); const [error,setError]=useState(""); const [busy,setBusy]=useState(false);
+  async function submit(e){e.preventDefault();setError("");setMessage("");if(!accepted){setError("Debes aceptar recibir estas notificaciones.");return;}setBusy(true);try{const r=await apiRequest({action:"subscribe",email});setMessage(r.message||"Revisa tu correo para confirmar.");setEmail("");setAccepted(false);}catch(x){setError(x.message);}finally{setBusy(false);}}
+  return <section className="subscribe-box"><div><p className="eyebrow">Novedades</p><h2>Entérate cuando haya productos disponibles</h2><p>Recibe un correo cuando publiquemos productos nuevos o vuelvan a estar disponibles.</p></div><form onSubmit={submit} className="subscribe-form"><label className="field"><span>Correo electrónico</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required maxLength="180" placeholder="nombre@correo.com" /></label><label className="admin-check"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)} /> Acepto recibir notificaciones comerciales de disponibilidad. Puedo darme de baja cuando quiera.</label>{error&&<p className="form-error">{error}</p>}{message&&<p className="form-notice">{message}</p>}<button className="button button-primary" disabled={busy}>{busy?"Enviando…":"Suscribirme"}</button></form></section>;
+}
