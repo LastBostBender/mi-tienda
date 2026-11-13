@@ -30,7 +30,7 @@ export default function ProductPage() {
             onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} />
         </label>
         <button className="button button-primary" onClick={() => addItem(product, quantity)}>Añadir al carrito</button>
-        <p><Link to="/">← Volver al catálogo</Link></p>
+        <p><Link to="/">Volver al catálogo</Link></p>
       </div>
     </section>
   );
