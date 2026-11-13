@@ -5,17 +5,23 @@ export async function sendOrder(order) {
     throw new Error("Configura APPS_SCRIPT_URL en src/config.js.");
   }
 
-  // Apps Script puede provocar un preflight CORS con application/json.
-  // text/plain evita ese preflight en este patrón; el contenido sigue siendo JSON.
+  // text/plain evita el preflight CORS en el patrón habitual de Google Apps Script.
   const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(order)
   });
 
-  const result = await response.json();
+  const responseText = await response.text();
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    throw new Error("El servidor no devolvió una respuesta JSON válida. Comprueba el despliegue de Apps Script.");
+  }
+
   if (!response.ok || result.status !== "ok") {
-    throw new Error(result.message || "No se pudo registrar el pedido.");
+    throw new Error(result.message || `No se pudo registrar el pedido (HTTP ${response.status}).`);
   }
   return result;
 }
@@ -26,7 +32,7 @@ export function notifyOrder(order) {
   const itemCount = order.items.reduce((sum, item) => sum + item.cantidad, 0);
   const message = `Cliente: ${order.nombre}\nTotal: ${order.total.toFixed(2)}\nUnidades: ${itemCount}`;
 
-  // Notificación secundaria: no debe retrasar ni invalidar un pedido ya registrado.
+  // La notificación es secundaria: un fallo no invalida el pedido guardado.
   fetch(`https://ntfy.sh/${encodeURIComponent(CONFIG.NTFY_TOPIC)}`, {
     method: "POST",
     headers: {
