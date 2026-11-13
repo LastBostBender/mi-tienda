@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useProducts } from "../context/ProductsContext";
 import { useCart } from "../context/CartContext";
 import { formatCurrency } from "../hooks/useCurrency";
+import { ArrowLeft, ShoppingCart, ImageOff } from "lucide-react";
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -12,12 +13,19 @@ export default function ProductPage() {
 
   if (status === "loading") return <p className="state-message">Cargando producto…</p>;
   const product = products.find((p) => p.id === id);
-  if (!product) return <section className="state-message"><h1>Producto no encontrado</h1><Link to="/">Volver al catálogo</Link></section>;
+  if (!product) return (
+    <section className="state-message">
+      <h1>Producto no encontrado</h1>
+      <Link to="/">Volver al catálogo</Link>
+    </section>
+  );
 
   return (
     <section className="product-detail">
       <div className="detail-image">
-        {product.imagen_url ? <img src={product.imagen_url} alt={product.nombre} /> : <div className="image-placeholder">Sin imagen</div>}
+        {product.imagen_url
+          ? <img src={product.imagen_url} alt={product.nombre} />
+          : <div className="image-placeholder"><ImageOff size={48} strokeWidth={1.5} /></div>}
       </div>
       <div className="detail-info">
         <p className="eyebrow">{product.categoria || "General"}</p>
@@ -29,8 +37,10 @@ export default function ProductPage() {
           <input type="number" min="1" step="1" value={quantity}
             onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} />
         </label>
-        <button className="button button-primary" onClick={() => addItem(product, quantity)}>Añadir al carrito</button>
-        <p><Link to="/">Volver al catálogo</Link></p>
+        <button className="button button-primary" onClick={() => addItem(product, quantity)}>
+          <ShoppingCart size={16} /> Añadir al carrito
+        </button>
+        <p><Link to="/"><ArrowLeft size={14} /> Volver al catálogo</Link></p>
       </div>
     </section>
   );

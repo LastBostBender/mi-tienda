@@ -1,12 +1,18 @@
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { formatCurrency } from "../hooks/useCurrency";
+import { Trash2, ImageOff, ShoppingCart } from "lucide-react";
 
 export default function CartPage() {
   const { items, total, setQuantity, removeItem } = useCart();
 
   if (!items.length) return (
-    <section className="state-message"><h1>Tu carrito está vacío</h1><p>Añade productos desde el catálogo.</p><Link className="button button-primary" to="/">Ir al catálogo</Link></section>
+    <section className="state-message">
+      <ShoppingCart size={40} strokeWidth={1.5} style={{ margin: "0 auto 16px", display: "block", color: "var(--color-muted)" }} />
+      <h1>Tu carrito está vacío</h1>
+      <p>Añade productos desde el catálogo.</p>
+      <Link className="button button-primary" to="/">Ir al catálogo</Link>
+    </section>
   );
 
   return (
@@ -15,17 +21,29 @@ export default function CartPage() {
       <div className="cart-list">
         {items.map((item) => (
           <article className="cart-row" key={item.id}>
-            {item.imagen_url ? <img src={item.imagen_url} alt="" /> : <div className="cart-thumb">—</div>}
-            <div className="cart-product"><strong>{item.nombre}</strong><span>{formatCurrency(item.precio)} / unidad</span></div>
-            <label className="field cart-quantity"><span>Cantidad</span><input type="number" min="1" value={item.cantidad}
-              onChange={(e) => setQuantity(item.id, e.target.value)} /></label>
+            {item.imagen_url
+              ? <img src={item.imagen_url} alt="" />
+              : <div className="cart-thumb"><ImageOff size={20} strokeWidth={1.5} /></div>}
+            <div className="cart-product">
+              <strong>{item.nombre}</strong>
+              <span>{formatCurrency(item.precio)} / unidad</span>
+            </div>
+            <label className="field cart-quantity">
+              <span>Cantidad</span>
+              <input type="number" min="1" value={item.cantidad}
+                onChange={(e) => setQuantity(item.id, e.target.value)} />
+            </label>
             <strong className="cart-subtotal">{formatCurrency(item.precio * item.cantidad)}</strong>
-            <button className="button button-danger button-small" onClick={() => removeItem(item.id)}>Eliminar</button>
+            <button className="button button-danger button-small" onClick={() => removeItem(item.id)}>
+              <Trash2 size={14} /> Eliminar
+            </button>
           </article>
         ))}
       </div>
       <div className="cart-summary"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
-      <div className="actions-end"><Link className="button button-primary" to="/checkout">Proceder al checkout</Link></div>
+      <div className="actions-end">
+        <Link className="button button-primary" to="/checkout">Proceder al checkout</Link>
+      </div>
     </section>
   );
 }

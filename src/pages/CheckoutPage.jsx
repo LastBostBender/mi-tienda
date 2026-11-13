@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { formatCurrency } from "../hooks/useCurrency";
 import { notifyOrder, sendOrder } from "../utils/order";
+import { ArrowLeft } from "lucide-react";
 
 function validContact(value) {
   const contact = value.trim();
@@ -24,14 +25,17 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
-  if (!items.length) return <section className="state-message"><h1>No hay productos para pedir</h1><Link to="/">Volver al catálogo</Link></section>;
+  if (!items.length) return (
+    <section className="state-message">
+      <h1>No hay productos para pedir</h1>
+      <Link to="/">Volver al catálogo</Link>
+    </section>
+  );
 
-  function update(event) {
-    setForm({ ...form, [event.target.name]: event.target.value });
-  }
+  function update(e) { setForm({ ...form, [e.target.name]: e.target.value }); }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function submit(e) {
+    e.preventDefault();
     setError("");
     if (!form.nombre.trim()) return setError("Escribe tu nombre.");
     if (!validContact(form.contacto)) return setError("Introduce un email o teléfono válido.");
@@ -62,24 +66,49 @@ export default function CheckoutPage() {
   return (
     <section className="checkout-layout">
       <div>
-        <p className="eyebrow">Último paso</p><h1>Finalizar pedido</h1>
+        <Link to="/carrito" className="back-link"><ArrowLeft size={14} /> Volver al carrito</Link>
+        <h1>Finalizar pedido</h1>
         <form className="checkout-form" onSubmit={submit}>
-          <label className="field"><span>Nombre *</span><input name="nombre" value={form.nombre} onChange={update} maxLength="120" required /></label>
-          <label className="field"><span>Email o teléfono *</span><input name="contacto" value={form.contacto} onChange={update} maxLength="160" required /></label>
-          <label className="field"><span>Dirección de entrega *</span><textarea name="direccion" rows="2" value={form.direccion} onChange={update} maxLength="300" required /></label>
-          <label className="field"><span>Notas (opcional)</span><textarea name="notas" rows="4" value={form.notas} onChange={update} maxLength="1000" /></label>
+          <label className="field"><span>Nombre completo *</span>
+            <input name="nombre" value={form.nombre} onChange={update} maxLength="120" required />
+          </label>
+          <label className="field"><span>Email o teléfono *</span>
+            <input name="contacto" value={form.contacto} onChange={update} maxLength="160" required />
+          </label>
+          <label className="field"><span>Dirección de entrega *</span>
+            <textarea name="direccion" rows="2" value={form.direccion} onChange={update} maxLength="300" required />
+          </label>
+          <label className="field"><span>Notas (opcional)</span>
+            <textarea name="notas" rows="3" value={form.notas} onChange={update} maxLength="1000" />
+          </label>
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="button button-primary button-full" disabled={sending}>
             {sending ? <><span className="spinner" /> Enviando pedido…</> : "Confirmar pedido"}
           </button>
         </form>
       </div>
+
       <aside className="order-summary">
         <h2>Resumen del pedido</h2>
-        {items.map((item) => <div className="summary-line" key={item.id}>
-          <span>{item.nombre} × {item.cantidad}</span><strong>{formatCurrency(item.precio * item.cantidad)}</strong>
-        </div>)}
-        <div className="summary-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+        <div className="summary-customer">
+          {form.nombre && <div className="summary-customer-row"><span>Cliente</span><strong>{form.nombre}</strong></div>}
+          {form.contacto && <div className="summary-customer-row"><span>Contacto</span><strong>{form.contacto}</strong></div>}
+          {form.direccion && <div className="summary-customer-row"><span>Dirección</span><strong>{form.direccion}</strong></div>}
+        </div>
+        <h3 className="summary-items-title">Productos</h3>
+        {items.map((item) => (
+          <div className="summary-line" key={item.id}>
+            <span className="summary-line-name">
+              {item.nombre}
+              <em className="summary-line-qty"> × {item.cantidad}</em>
+            </span>
+            <strong>{formatCurrency(item.precio * item.cantidad)}</strong>
+          </div>
+        ))}
+        <div className="summary-total">
+          <span>Total a pagar</span>
+          <strong>{formatCurrency(total)}</strong>
+        </div>
       </aside>
     </section>
   );
