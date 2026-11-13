@@ -25,17 +25,18 @@ export async function sendOrder(order) {
   return result;
 }
 
-export function notifyOrder(order) {
-  if (!CONFIG.NTFY_TOPIC || CONFIG.NTFY_TOPIC.includes("[PEGAR_")) return;
+export async function notifyOrder(order) {
+  const topic = (CONFIG.NTFY_TOPIC || "").trim();
+  if (!topic || topic.includes("[PEGAR_")) return;
 
   const fmt = (n) =>
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
+  const totalUnits = order.items.reduce((s, i) => s + i.cantidad, 0);
+
   const itemLines = order.items
     .map((i) => `  • ${i.nombre} × ${i.cantidad}  —  ${fmt(i.precio * i.cantidad)}`)
     .join("\n");
-
-  const totalUnits = order.items.reduce((s, i) => s + i.cantidad, 0);
 
   const message = [
     `👤 ${order.nombre}`,
@@ -49,13 +50,24 @@ export function notifyOrder(order) {
     `💰 Total: ${fmt(order.total)}`,
   ].filter((l) => l !== null).join("\n");
 
-  fetch(`https://ntfy.sh/${encodeURIComponent(CONFIG.NTFY_TOPIC)}`, {
-    method: "POST",
-    headers: {
-      Title: "🛒 Nuevo pedido — Mi Tienda",
-      Priority: "4",
-      Tags: "shopping_cart,bell"
-    },
-    body: message
-  }).catch((err) => console.warn("No se pudo enviar la notificación ntfy:", err));
+  // Limpia el topic por si acaso trae el dominio
+  const cleanTopic = topic.replace(/^https?:\/\/ntfy\.sh\//i, "").replace(/^ntfy\.sh\//i, "");
+
+  try {
+    const res = await fetch(`https://ntfy.sh/${cleanTopic}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+        "Title": "Nuevo pedido — Mi Tienda",
+        "Priority": "4",
+        "Tags": "shopping_cart,bell"
+      },
+      body: message
+    });
+    if (!res.ok) {
+      console.warn(`ntfy respondió con HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.warn("No se pudo enviar la notificación ntfy:", err.message);
+  }
 }
