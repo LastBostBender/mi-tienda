@@ -5,7 +5,6 @@ export async function sendOrder(order) {
     throw new Error("Configura APPS_SCRIPT_URL en src/config.js.");
   }
 
-  // text/plain evita el preflight CORS en el patrón habitual de Google Apps Script.
   const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -29,17 +28,34 @@ export async function sendOrder(order) {
 export function notifyOrder(order) {
   if (!CONFIG.NTFY_TOPIC || CONFIG.NTFY_TOPIC.includes("[PEGAR_")) return;
 
-  const itemCount = order.items.reduce((sum, item) => sum + item.cantidad, 0);
-  const message = `Cliente: ${order.nombre}\nTotal: ${order.total.toFixed(2)}\nUnidades: ${itemCount}`;
+  const fmt = (n) =>
+    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
 
-  // La notificación es secundaria: un fallo no invalida el pedido guardado.
+  const itemLines = order.items
+    .map((i) => `  • ${i.nombre} × ${i.cantidad}  —  ${fmt(i.precio * i.cantidad)}`)
+    .join("\n");
+
+  const totalUnits = order.items.reduce((s, i) => s + i.cantidad, 0);
+
+  const message = [
+    `👤 ${order.nombre}`,
+    `📞 ${order.contacto}`,
+    `📍 ${order.direccion}`,
+    order.notas ? `📝 ${order.notas}` : null,
+    ``,
+    `🛍️ Productos (${totalUnits} unidad${totalUnits !== 1 ? "es" : ""}):`,
+    itemLines,
+    ``,
+    `💰 Total: ${fmt(order.total)}`,
+  ].filter((l) => l !== null).join("\n");
+
   fetch(`https://ntfy.sh/${encodeURIComponent(CONFIG.NTFY_TOPIC)}`, {
     method: "POST",
     headers: {
-      Title: "Nuevo pedido",
+      Title: "🛒 Nuevo pedido — Mi Tienda",
       Priority: "4",
-      Tags: "shopping_cart"
+      Tags: "shopping_cart,bell"
     },
     body: message
-  }).catch((error) => console.warn("No se pudo enviar la notificación ntfy:", error));
+  }).catch((err) => console.warn("No se pudo enviar la notificación ntfy:", err));
 }
