@@ -1,11 +1,17 @@
 import { Link } from "react-router-dom";
-import { Store } from "lucide-react";
+
+// Pon tu nombre/logo aquí
+const NOMBRE = "Mi Tienda";
+// const LOGO_URL = "/logo.svg"; // descomenta si tienes logo
 
 export default function Header() {
   return (
     <header className="site-header">
       <div className="container header-inner">
-        <Link className="brand" to="/"><Store size={20} strokeWidth={2.5} /> Mi Tienda</Link>
+        <Link className="brand" to="/" aria-label={NOMBRE}>
+          {/* LOGO_URL ? <img src={LOGO_URL} alt={NOMBRE} /> : NOMBRE */}
+          {NOMBRE}
+        </Link>
       </div>
     </header>
   );
