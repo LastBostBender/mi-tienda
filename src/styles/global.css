@@ -98,9 +98,11 @@ h2 { color: var(--text-main); font-size: 1.1rem; }
   position: sticky; top: var(--navbar-height); z-index: 90;
   overflow-x: auto; white-space: nowrap; scrollbar-width: none;
   padding: .65rem 0;
+  /* padding lateral que coincide con .container para alinear al borde */
+  padding-inline: max(14px, calc((100% - 1180px) / 2));
 }
 .categorias-nav::-webkit-scrollbar { display: none; }
-.categorias-nav .container { display: flex; gap: .4rem; width: max-content; min-width: min(100% - 40px, 1180px); }
+.categorias-nav .container { display: flex; gap: .4rem; width: max-content; min-width: 0; padding: 0; margin: 0; }
 .categorias-nav { overscroll-behavior-x: contain; }
 .btn-categoria { min-height: 42px; padding: .55rem .9rem; border-radius: 8px; }
 .btn-categoria {
@@ -215,12 +217,12 @@ h2 { color: var(--text-main); font-size: 1.1rem; }
 }
 .fab-btn:hover { background: var(--accent-hover); transform: scale(1.05); }
 .fab-theme {
-  background: var(--bg-surface);
-  color: var(--text-main);
-  border: 1px solid var(--border);
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
   box-shadow: 0 2px 8px rgba(0,0,0,.2);
 }
-.fab-theme:hover { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.fab-theme:hover { background: var(--accent); color: var(--accent-text); }
 .fab-badge {
   position: absolute; top: -5px; right: -5px;
   background: #E63946; color: #fff;
@@ -406,7 +408,7 @@ h2 { color: var(--text-main); font-size: 1.1rem; }
   .catalogo-categorias { gap: 1.5rem; }
   .catalogo-categoria-titulo { margin-bottom: .65rem; }
   .product-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .productos-fila .product-card { flex: 0 0 78vw; }
+  .productos-fila .product-card { flex: 0 0 clamp(200px, 72vw, 260px); }
   .product-card { width: 100%; }
   .product-image-link { aspect-ratio: 16/9; max-height: 190px; }
   .product-card-body { padding: 14px 16px 16px; gap: 7px; }
