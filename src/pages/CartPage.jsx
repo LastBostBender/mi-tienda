@@ -8,7 +8,7 @@ export default function CartPage() {
 
   if (!items.length) return (
     <section className="state-message">
-      <ShoppingCart size={40} strokeWidth={1.5} style={{ margin: "0 auto 16px", display: "block", color: "var(--color-muted)" }} />
+      <ShoppingCart size={40} strokeWidth={1.5} style={{ margin: "0 auto 16px", display: "block", color: "var(--text-muted)" }} />
       <h1>Tu carrito está vacío</h1>
       <p>Añade productos desde el catálogo.</p>
       <Link className="button button-primary" to="/">Ir al catálogo</Link>
