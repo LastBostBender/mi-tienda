@@ -88,7 +88,7 @@ export default function CatalogPage() {
   }, [products, search, category]);
 
   if (status === "loading") return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14, marginTop: 24 }}>
+    <div className="skeleton-grid">
       {[...Array(4)].map((_, i) => <div key={i} className="skeleton skeleton-card" />)}
     </div>
   );
