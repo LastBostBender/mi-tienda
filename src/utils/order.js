@@ -53,16 +53,20 @@ export async function notifyOrder(order) {
   // Limpia el topic por si acaso trae el dominio
   const cleanTopic = topic.replace(/^https?:\/\/ntfy\.sh\//i, "").replace(/^ntfy\.sh\//i, "");
 
+  // Se usa JSON para evitar el preflight CORS que generan los headers ntfy
+  // (Title, Priority, Tags). Con Content-Type application/json ntfy los acepta
+  // en el cuerpo y la petición es simple (no dispara OPTIONS).
   try {
-    const res = await fetch(`https://ntfy.sh/${cleanTopic}`, {
+    const res = await fetch(`https://ntfy.sh/`, {
       method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-        "Title": "Nuevo pedido — Mi Tienda",
-        "Priority": "4",
-        "Tags": "shopping_cart,bell"
-      },
-      body: message
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topic: cleanTopic,
+        title: "Nuevo pedido — Mi Tienda",
+        message,
+        priority: 4,
+        tags: ["shopping_cart", "bell"]
+      })
     });
     if (!res.ok) {
       console.warn(`ntfy respondió con HTTP ${res.status}`);
