@@ -57,9 +57,11 @@ export async function notifyOrder(order) {
   // (Title, Priority, Tags). Con Content-Type application/json ntfy los acepta
   // en el cuerpo y la petición es simple (no dispara OPTIONS).
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (CONFIG.NTFY_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.NTFY_TOKEN}`;
     const res = await fetch(`https://ntfy.sh/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         topic: cleanTopic,
         title: "Nuevo pedido — Mi Tienda",
