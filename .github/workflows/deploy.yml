@@ -31,6 +31,8 @@ jobs:
 
       - name: Compilar aplicación
         run: npm run build
+        env:
+          VITE_NTFY_TOKEN: ${{ secrets.VITE_NTFY_TOKEN }}
 
       - name: Preparar GitHub Pages
         uses: actions/configure-pages@v5
