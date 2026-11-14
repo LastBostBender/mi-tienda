@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Moon, ShoppingCart, Sun } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import CartDrawer from "../components/CartDrawer";
-import { useProducts } from "../context/ProductsContext";
 import { useCart } from "../context/CartContext";
+import { useProducts } from "../context/ProductsContext";
 
 const NOMBRE_TIENDA = "Mi Tienda";
 const SLOGAN = "Catálogo y pedidos online";
@@ -36,8 +37,8 @@ function Splash({ onDone }) {
   return (
     <div className="splash" ref={ref}>
       <div className="splash-content">
-        {/* Swap por <img className="splash-logo" src={LOGO_URL} /> si tienes logo */}
-        <span className="splash-icon">🛍️</span>
+        {/* Si tienes logo: <img className="splash-logo" src={LOGO_URL} alt={NOMBRE_TIENDA} /> */}
+        <ShoppingCart size={56} strokeWidth={1.5} style={{ color: "var(--accent)", flexShrink: 0 }} />
         <div>
           <div className="splash-name">{NOMBRE_TIENDA}</div>
           <div className="splash-slogan">{SLOGAN}</div>
@@ -76,6 +77,7 @@ export default function CatalogPage() {
     ), [products, search, category]
   );
 
+  // Filas horizontales por categoría (solo cuando no hay filtro activo)
   const byCategory = useMemo(() => {
     if (search || category !== "Todas") return null;
     const map = new Map();
@@ -88,7 +90,7 @@ export default function CatalogPage() {
   }, [products, search, category]);
 
   if (status === "loading") return (
-    <div className="skeleton-grid">
+    <div className="skeleton-grid container" style={{ marginTop: 24 }}>
       {[...Array(4)].map((_, i) => <div key={i} className="skeleton skeleton-card" />)}
     </div>
   );
@@ -120,7 +122,7 @@ export default function CatalogPage() {
         </div>
       </nav>
 
-      <section>
+      <section className="container">
         <div className="catalog-tools" style={{ marginTop: "1.2rem" }}>
           <label className="field">
             <span>Buscar</span>
@@ -133,10 +135,11 @@ export default function CatalogPage() {
         ) : !filtered.length ? (
           <div className="state-message">No hay coincidencias.</div>
         ) : byCategory ? (
+          // Vista por filas horizontales de categoría
           <div className="catalogo-categorias">
             {byCategory.map(([cat, prods]) => (
               <div key={cat}>
-                <h2 className="catalogo-categoria-titulo">📦 {cat}</h2>
+                <h2 className="catalogo-categoria-titulo">{cat}</h2>
                 <div className="productos-fila">
                   {prods.map(p => <ProductCard key={p.id} product={p} />)}
                 </div>
@@ -144,6 +147,7 @@ export default function CatalogPage() {
             ))}
           </div>
         ) : (
+          // Grid cuando hay filtro activo
           <div className="product-grid">
             {filtered.map(p => <ProductCard key={p.id} product={p} />)}
           </div>
@@ -152,16 +156,11 @@ export default function CatalogPage() {
 
       {/* FABs */}
       <div className="fab-container">
-        <button
-          className="fab-btn"
-          style={{ background: "var(--bg-surface)", color: "var(--text-main)", border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,.2)" }}
-          onClick={toggleDark}
-          aria-label="Cambiar tema"
-        >
-          {dark ? "☀️" : "🌙"}
+        <button className="fab-btn fab-theme" onClick={toggleDark} aria-label="Cambiar tema">
+          {dark ? <Sun size={22} strokeWidth={2} /> : <Moon size={22} strokeWidth={2} />}
         </button>
-        <button className="fab-btn" aria-label="Ver carrito" onClick={() => setDrawerOpen(true)}>
-          🛒
+        <button className="fab-btn" onClick={() => setDrawerOpen(true)} aria-label="Ver carrito">
+          <ShoppingCart size={22} strokeWidth={2} />
           {itemCount > 0 && <span className="fab-badge">{itemCount}</span>}
         </button>
       </div>

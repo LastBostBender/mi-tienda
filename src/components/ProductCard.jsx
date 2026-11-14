@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ImageOff } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { formatCurrency } from "../hooks/useCurrency";
 
@@ -16,7 +17,7 @@ export default function ProductCard({ product }) {
       <div className="product-image-link">
         {product.imagen_url
           ? <img src={product.imagen_url} alt={product.nombre} loading="lazy" />
-          : <div className="image-placeholder">📦</div>
+          : <div className="image-placeholder"><ImageOff size={32} strokeWidth={1.5} /></div>
         }
       </div>
       <div className="product-card-body">
@@ -36,7 +37,7 @@ export default function ProductCard({ product }) {
             min={1}
             onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
           />
-          <button className="button button-primary" style={{ flex: 1 }} onClick={handleAdd}>
+          <button className="button button-primary" onClick={handleAdd}>
             Añadir
           </button>
         </div>

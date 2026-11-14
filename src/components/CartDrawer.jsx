@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ShoppingCart, Trash2, X, Receipt } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { formatCurrency } from "../hooks/useCurrency";
 
@@ -34,15 +35,17 @@ export default function CartDrawer({ open, onClose }) {
       <aside className="drawer" role="dialog" aria-modal="true" aria-label="Carrito">
 
         <div className="drawer-header">
-          <h5>🧾 Orden Actual</h5>
-          <button className="drawer-close" onClick={onClose} aria-label="Cerrar">✕</button>
+          <h5><Receipt size={16} strokeWidth={2} /> Orden Actual</h5>
+          <button className="drawer-close" onClick={onClose} aria-label="Cerrar">
+            <X size={16} strokeWidth={2} />
+          </button>
         </div>
 
         <div className="drawer-body">
           {!items.length ? (
             <div className="carrito-empty">
-              <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>🛒</div>
-              <p>Ningún registro en curso.</p>
+              <ShoppingCart size={40} strokeWidth={1.5} style={{ margin: "0 auto 1rem", display: "block", color: "var(--text-muted)" }} />
+              <p>Ningún producto en el carrito.</p>
             </div>
           ) : items.map((item) => (
             <div className="carrito-item" key={item.id}>
@@ -67,7 +70,7 @@ export default function CartDrawer({ open, onClose }) {
                   />
                 </div>
                 <button className="btn-delete" onClick={() => removeItem(item.id)} aria-label="Eliminar">
-                  🗑
+                  <Trash2 size={16} strokeWidth={2} />
                 </button>
               </div>
             </div>
