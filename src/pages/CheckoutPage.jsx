@@ -54,9 +54,9 @@ export default function CheckoutPage() {
     setSending(true);
     try {
       await sendOrder(order);
-      notifyOrder(order);
+      const ntfy = await notifyOrder(order);
       clearCart();
-      navigate("/gracias");
+      navigate("/gracias", { state: { ntfy } });
     } catch (err) {
       setError(err.message || "No se pudo enviar el pedido. Inténtalo nuevamente.");
       setSending(false);

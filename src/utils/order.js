@@ -68,11 +68,12 @@ export async function notifyOrder(order) {
         tags: ["shopping_cart", "bell"]
       })
     });
+    const body = await res.text().catch(() => "");
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.warn(`ntfy HTTP ${res.status}${body ? ": " + body : ""}`);
+      return { ok: false, status: res.status, detail: body };
     }
+    return { ok: true, status: res.status };
   } catch (err) {
-    console.warn("No se pudo enviar la notificación ntfy:", err.message);
+    return { ok: false, status: 0, detail: err.message };
   }
 }
