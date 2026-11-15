@@ -31,7 +31,7 @@ export default function CartPage() {
             <label className="field cart-quantity">
               <span>Cantidad</span>
               <input type="number" min="1" value={item.cantidad}
-                onChange={(e) => setQuantity(item.id, e.target.value)} />
+                onChange={(e) => setQuantity(item.id, parseInt(e.target.value) || 1)} />
             </label>
             <strong className="cart-subtotal">{formatCurrency(item.precio * item.cantidad)}</strong>
             <button className="button button-danger button-small" onClick={() => removeItem(item.id)}>

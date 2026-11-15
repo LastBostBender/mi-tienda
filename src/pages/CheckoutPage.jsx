@@ -47,7 +47,7 @@ export default function CheckoutPage() {
       contacto: form.contacto.trim(),
       direccion: form.direccion.trim(),
       notas: form.notas.trim(),
-      items: items.map(({ id, nombre, precio, cantidad }) => ({ id, nombre, precio, cantidad })),
+      items: items.map(({ id, nombre, precio, cantidad }) => ({ id, nombre, precio: Number(precio), cantidad: Math.max(1, parseInt(cantidad) || 1) })),
       total: Number(total.toFixed(2))
     };
 
