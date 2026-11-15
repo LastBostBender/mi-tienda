@@ -1,7 +1,7 @@
 
 import { CONFIG } from "../config";
 
-// Registra el pedido en Google Apps Script
+// REGISTRAR PEDIDO EN GOOGLE APPS SCRIPT
 export async function sendOrder(order) {
   if (
     !CONFIG.APPS_SCRIPT_URL ||
@@ -39,7 +39,7 @@ export async function sendOrder(order) {
   return result;
 }
 
-// Envía la notificación del pedido a ntfy
+// ENVIAR NOTIFICACIÓN A NTFY
 export async function notifyOrder(order) {
   const topic = (CONFIG.NTFY_TOPIC || "")
     .trim()
@@ -63,7 +63,7 @@ export async function notifyOrder(order) {
     };
   }
 
-  const formatMoney = (value) =>
+  const money = (value) =>
     new Intl.NumberFormat("es-CO", {
       style: "currency",
       currency: "COP",
@@ -77,21 +77,27 @@ export async function notifyOrder(order) {
 
   const productLines = order.items.map((item) => {
     const quantity = Number(item.cantidad) || 0;
-    return `• ${item.nombre} × ${quantity}`;
+    return `• ${item.nombre}  × ${quantity}`;
   });
 
   const message = [
-    `TOTAL DEL PEDIDO: ${formatMoney(order.total)}`,
+    "━━━━━━━━━━━━━━━━━━",
+    "       NUEVO PEDIDO",
+    "━━━━━━━━━━━━━━━━━━",
     "",
-    `CLIENTE: ${order.nombre || "No indicado"}`,
-    `CONTACTO: ${order.contacto || "No indicado"}`,
-    `DIRECCIÓN: ${order.direccion || "No indicada"}`,
+    "👤 DATOS DEL CLIENTE",
+    `Nombre: ${order.nombre || "No indicado"}`,
+    `Contacto: ${order.contacto || "No indicado"}`,
+    `Dirección: ${order.direccion || "No indicada"}`,
+    ...(order.notas ? [`Notas: ${order.notas}`] : []),
     "",
-    `PRODUCTOS (${order.items.length})`,
+    "🛍️ PRODUCTOS",
     ...productLines,
     "",
-    `TOTAL DE UNIDADES: ${totalUnits}`,
-    ...(order.notas ? ["", `NOTAS: ${order.notas}`] : [])
+    `📦 ${totalUnits} unidades en total`,
+    "",
+    `💰 TOTAL: ${money(order.total)}`,
+    "━━━━━━━━━━━━━━━━━━"
   ].join("\n");
 
   try {
@@ -100,15 +106,12 @@ export async function notifyOrder(order) {
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "text/plain;charset=utf-8",
+          "Title": "🛒 NUEVO PEDIDO | MI TIENDA",
+          "Priority": "4",
+          "Tags": "shopping_cart,bell"
         },
-        body: JSON.stringify({
-          topic,
-          title: "🛒 NUEVO PEDIDO | MI TIENDA",
-          message,
-          priority: 4,
-          tags: ["shopping_cart", "bell"]
-        })
+        body: message
       }
     );
 
@@ -127,13 +130,12 @@ export async function notifyOrder(order) {
       status: response.status,
       topic
     };
+
   } catch (error) {
     return {
       ok: false,
       status: 0,
-      detail:
-        error.message ||
-        "No se pudo conectar con ntfy."
+      detail: error.message || "No se pudo conectar con ntfy."
     };
   }
 }
