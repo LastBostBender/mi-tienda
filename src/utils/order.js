@@ -1,14 +1,20 @@
 
 import { CONFIG } from "../config";
 
+// Registra el pedido en Google Apps Script
 export async function sendOrder(order) {
-  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("[PEGAR_")) {
+  if (
+    !CONFIG.APPS_SCRIPT_URL ||
+    CONFIG.APPS_SCRIPT_URL.includes("[PEGAR_")
+  ) {
     throw new Error("Configura APPS_SCRIPT_URL en src/config.js.");
   }
 
   const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
     body: JSON.stringify(order)
   });
 
@@ -25,13 +31,15 @@ export async function sendOrder(order) {
 
   if (!response.ok || result.status !== "ok") {
     throw new Error(
-      result.message || `No se pudo registrar el pedido (HTTP ${response.status}).`
+      result.message ||
+      `No se pudo registrar el pedido (HTTP ${response.status}).`
     );
   }
 
   return result;
 }
 
+// Envía la notificación del pedido a ntfy
 export async function notifyOrder(order) {
   const topic = (CONFIG.NTFY_TOPIC || "")
     .trim()
@@ -55,7 +63,7 @@ export async function notifyOrder(order) {
     };
   }
 
-  const fmt = (value) =>
+  const formatMoney = (value) =>
     new Intl.NumberFormat("es-CO", {
       style: "currency",
       currency: "COP",
@@ -67,30 +75,23 @@ export async function notifyOrder(order) {
     0
   );
 
-  const productLines = order.items.map((item, index) => {
+  const productLines = order.items.map((item) => {
     const quantity = Number(item.cantidad) || 0;
-    const subtotal = (Number(item.precio) || 0) * quantity;
-
-    return `${index + 1}. ${item.nombre}
-   ${quantity} unidad(es) × ${fmt(item.precio)} = ${fmt(subtotal)}`;
+    return `• ${item.nombre} × ${quantity}`;
   });
 
   const message = [
-    "🛍️ RESUMEN DEL PEDIDO",
+    `TOTAL DEL PEDIDO: ${formatMoney(order.total)}`,
     "",
-    "👤 DATOS DEL CLIENTE",
-    `Nombre: ${order.nombre || "No indicado"}`,
-    `Contacto: ${order.contacto || "No indicado"}`,
-    `Dirección: ${order.direccion || "No indicada"}`,
-    ...(order.notas ? [`Observaciones: ${order.notas}`] : []),
+    `CLIENTE: ${order.nombre || "No indicado"}`,
+    `CONTACTO: ${order.contacto || "No indicado"}`,
+    `DIRECCIÓN: ${order.direccion || "No indicada"}`,
     "",
-    "📦 PRODUCTOS",
+    `PRODUCTOS (${order.items.length})`,
     ...productLines,
     "",
-    "━━━━━━━━━━━━━━━━",
-    `🧾 Total de unidades: ${totalUnits}`,
-    `💰 TOTAL A PAGAR: ${fmt(order.total)}`,
-    "━━━━━━━━━━━━━━━━"
+    `TOTAL DE UNIDADES: ${totalUnits}`,
+    ...(order.notas ? ["", `NOTAS: ${order.notas}`] : [])
   ].join("\n");
 
   try {
@@ -130,7 +131,9 @@ export async function notifyOrder(order) {
     return {
       ok: false,
       status: 0,
-      detail: error.message || "No se pudo conectar con ntfy."
+      detail:
+        error.message ||
+        "No se pudo conectar con ntfy."
     };
   }
 }
