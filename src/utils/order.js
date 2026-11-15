@@ -53,24 +53,23 @@ export async function notifyOrder(order) {
   // Limpia el topic por si acaso trae el dominio
   const cleanTopic = topic.replace(/^https?:\/\/ntfy\.sh\//i, "").replace(/^ntfy\.sh\//i, "");
 
-  // Se usa el endpoint con el topic en la URL (más robusto que en el body).
-  // JSON body para Title/Priority/Tags evita el preflight CORS de headers custom.
+  // Headers HTTP para metadatos (title, priority, tags) y body texto plano.
+  // Formato compatible con todas las versiones de ntfy.apk.
   try {
-    const headers = { "Content-Type": "application/json" };
+    const headers = {
+      "Title": "Nuevo pedido — Mi Tienda",
+      "Priority": "high",
+      "Tags": "shopping_cart,bell",
+    };
     if (CONFIG.NTFY_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.NTFY_TOKEN}`;
     const res = await fetch(`https://ntfy.sh/${cleanTopic}`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        title: "Nuevo pedido — Mi Tienda",
-        message,
-        priority: 4,
-        tags: ["shopping_cart", "bell"]
-      })
+      body: message
     });
-    const body = await res.text().catch(() => "");
     if (!res.ok) {
-      return { ok: false, status: res.status, detail: body };
+      const detail = await res.text().catch(() => "");
+      return { ok: false, status: res.status, detail };
     }
     return { ok: true, status: res.status };
   } catch (err) {
