@@ -75,45 +75,40 @@ export async function notifyOrder(order) {
     0
   );
 
-  const productLines = order.items.map((item) => {
-    const quantity = Number(item.cantidad) || 0;
-    return `• ${item.nombre}  × ${quantity}`;
-  });
+  const products = order.items.map((item) =>
+    `• ${item.nombre} × ${Number(item.cantidad) || 0}`
+  );
 
   const message = [
-    "━━━━━━━━━━━━━━━━━━",
-    "       NUEVO PEDIDO",
-    "━━━━━━━━━━━━━━━━━━",
-    "",
     "👤 DATOS DEL CLIENTE",
     `Nombre: ${order.nombre || "No indicado"}`,
     `Contacto: ${order.contacto || "No indicado"}`,
     `Dirección: ${order.direccion || "No indicada"}`,
     ...(order.notas ? [`Notas: ${order.notas}`] : []),
     "",
-    "🛍️ PRODUCTOS",
-    ...productLines,
+    "🛍️ PRODUCTOS DEL PEDIDO",
+    ...products,
     "",
-    `📦 ${totalUnits} unidades en total`,
-    "",
-    `💰 TOTAL: ${money(order.total)}`,
-    "━━━━━━━━━━━━━━━━━━"
+    `📦 Total de unidades: ${totalUnits}`,
+    `💰 TOTAL A PAGAR: ${money(order.total)}`
   ].join("\n");
 
   try {
-    const response = await fetch(
-      `https://ntfy.sh/${encodeURIComponent(topic)}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-          "Title": "🛒 NUEVO PEDIDO | MI TIENDA",
-          "Priority": "4",
-          "Tags": "shopping_cart,bell"
-        },
-        body: message
-      }
-    );
+    // IMPORTANTE: JSON se envía a la raíz de ntfy.sh,
+    // no a la dirección del topic.
+    const response = await fetch("https://ntfy.sh/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        topic,
+        title: "NUEVO PEDIDO | MI TIENDA",
+        message,
+        priority: 4,
+        tags: ["shopping_cart", "bell"]
+      })
+    });
 
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
@@ -130,7 +125,6 @@ export async function notifyOrder(order) {
       status: response.status,
       topic
     };
-
   } catch (error) {
     return {
       ok: false,
