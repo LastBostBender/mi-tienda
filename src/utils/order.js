@@ -53,19 +53,16 @@ export async function notifyOrder(order) {
   // Limpia el topic por si acaso trae el dominio
   const cleanTopic = topic.replace(/^https?:\/\/ntfy\.sh\//i, "").replace(/^ntfy\.sh\//i, "");
 
-  // Headers HTTP para metadatos (title, priority, tags) y body texto plano.
-  // Formato compatible con todas las versiones de ntfy.apk.
   try {
-    const headers = {
-      "Title": "Nuevo pedido — Mi Tienda",
-      "Priority": "high",
-      "Tags": "shopping_cart,bell",
-    };
-    if (CONFIG.NTFY_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.NTFY_TOKEN}`;
     const res = await fetch(`https://ntfy.sh/${cleanTopic}`, {
       method: "POST",
-      headers,
-      body: message
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Nuevo pedido — Mi Tienda",
+        message,
+        priority: 4,
+        tags: ["shopping_cart", "bell"]
+      })
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
