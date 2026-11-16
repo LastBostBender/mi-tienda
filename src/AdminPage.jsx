@@ -1,4 +1,3 @@
-
 import "./styles-admin.css";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -11,8 +10,8 @@ import {
   Package,
   Search,
 } from "lucide-react";
-import { apiRequest } from "../utils/api";
-import { formatCurrency } from "../hooks/useCurrency";
+import { apiRequest } from "./utils/api";
+import { formatCurrency } from "./hooks/useCurrency";
 
 const EMPTY = {
   id: "",
