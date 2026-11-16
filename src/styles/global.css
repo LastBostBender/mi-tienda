@@ -444,3 +444,30 @@ h2 { color: var(--text-main); font-size: 1.1rem; }
   .button { padding-inline: 12px; }
 }
 .text-muted { color: var(--text-muted) !important; }
+
+/* Mejora compacta del carrito y selector de cantidades */
+.cart-row-compact { display:flex; flex-direction:column; align-items:stretch; gap:9px; padding:11px 13px; }
+.cart-product-top { display:flex; align-items:center; gap:11px; min-width:0; }
+.cart-product-top img, .cart-product-top .cart-thumb { width:58px; height:58px; flex:0 0 58px; border-radius:7px; object-fit:cover; }
+.cart-row-compact .cart-product strong { font-size:.86rem; line-height:1.3; }
+.cart-row-compact .cart-product span { font-size:.74rem; }
+.cart-quantity-area { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.cart-quantity-input { width:100px; min-height:40px; padding:6px 9px; border:1px solid var(--border); border-radius:7px; background:var(--bg-body); color:var(--text-main); font:600 .92rem 'Poppins',sans-serif; }
+.cart-row-compact .cart-subtotal { font-size:.92rem; }
+.cart-row-bottom { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.quantity-stepper { display:flex; align-items:center; gap:5px; min-width:0; }
+.quantity-stepper button { min-width:35px; min-height:34px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--bg-body); color:var(--text-main); font:600 .78rem 'Poppins',sans-serif; cursor:pointer; }
+.quantity-stepper button:disabled { opacity:.35; cursor:not-allowed; }
+.cart-delete-icon { display:grid; place-items:center; width:36px; height:36px; flex:0 0 36px; border:0; border-radius:8px; background:var(--danger-bg); color:var(--danger); cursor:pointer; }
+.minimum-order-notice { margin:-5px 0 16px; padding:10px 12px; border-radius:8px; background:var(--accent-light); color:var(--text-main); font-size:.82rem; line-height:1.45; }
+.catalog-quantity-controls { display:flex; flex-direction:column; gap:8px; margin-top:auto; }
+.catalog-quantity-controls .quantity-stepper { justify-content:space-between; gap:4px; }
+.catalog-quantity-controls .quantity-stepper button { flex:1 1 0; min-width:0; }
+.catalog-quantity-controls .qty-input { width:48px; min-height:34px; padding:3px; font-size:.82rem; }
+.catalog-quantity-controls > .button { width:100%; min-height:38px; padding:7px 12px; font-size:.82rem; }
+@media (max-width:600px) {
+  .cart-row-compact { padding:10px 11px; gap:8px; }
+  .cart-product-top img, .cart-product-top .cart-thumb { width:54px; height:54px; flex-basis:54px; }
+  .cart-quantity-input { width:88px; min-height:38px; }
+  .cart-row-compact .cart-subtotal { font-size:.86rem; }
+}
