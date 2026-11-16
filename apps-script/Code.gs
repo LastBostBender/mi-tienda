@@ -2,6 +2,7 @@
 const SPREADSHEET_ID = "17gbBJ2ScPe5_LlSMnggPgSgoJjOemartut7K-OM96V4";
 const SESSION_TTL = 21600;
 const ORDER_STATES = ["pendiente", "confirmado", "pagado", "enviado", "entregado", "cancelado", "eliminado"];
+
 function out_(x){return ContentService.createTextOutput(JSON.stringify(x)).setMimeType(ContentService.MimeType.JSON);}
 function sh_(n){const s=SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(n);if(!s)throw Error('No existe la pestaña "'+n+'".');return s;}
 function hdr_(r){const h={};r.forEach((v,i)=>{const k=String(v||"").trim().toLowerCase();if(k)h[k]=i;});return h;}
@@ -11,22 +12,184 @@ function clean_(v,n){let s=String(v==null?"":v).trim().slice(0,n);return /^[=+\-
 function price_(v){if(typeof v==="number")return v;let s=String(v||"").replace(/\s/g,"");if(s.includes(",")&&s.includes("."))s=s.lastIndexOf(",")>s.lastIndexOf(".")?s.replace(/\./g,"").replace(",","."):s.replace(/,/g,"");else s=s.replace(",",".");return Number(s);}
 function ensure_(name,heads){let s=SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(name);if(!s)s=SpreadsheetApp.openById(SPREADSHEET_ID).insertSheet(name);if(!s.getLastRow())s.appendRow(heads);return s;}
 function hash_(p,s){return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,s+String(p),Utilities.Charset.UTF_8));}
+/** Añade las columnas nuevas al final si la hoja ya existía. No borra ni mueve datos. */
+function ensureOrderColumns_(s){
+  const required=["timestamp","nombre","contacto","direccion","notas","items","total","estado","comprador_nombre","comprador_telefono","recibe_nombre","recibe_telefono"];
+  if(!s.getLastRow()){s.appendRow(required);return;}
+  const first=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
+  const h=hdr_(first);
+  const missing=required.filter(k=>!(k in h));
+  if(missing.length)s.getRange(1,s.getLastColumn()+1,1,missing.length).setValues([missing]);
+}
+function orderColumns_(s){
+  ensureOrderColumns_(s);
+  const h=hdr_(s.getRange(1,1,1,s.getLastColumn()).getValues()[0]);
+  const c={};
+  ["timestamp","nombre","contacto","direccion","notas","items","total","estado","comprador_nombre","comprador_telefono","recibe_nombre","recibe_telefono"].forEach(k=>c[k]=h[k]);
+  return c;
+}
+
 /** Configura ADMIN_EMAIL y ADMIN_INITIAL_PASSWORD en Propiedades del script y ejecuta esta función UNA VEZ. */
-function setupAdmin(){const p=PropertiesService.getScriptProperties(),email=String(p.getProperty("ADMIN_EMAIL")||"").trim().toLowerCase(),pass=String(p.getProperty("ADMIN_INITIAL_PASSWORD")||"");if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||pass.length<12)throw Error("Configura correo válido y contraseña de al menos 12 caracteres en Propiedades del script.");const s=ensure_("Usuarios",["correo","password_hash","salt","rol","activo"]);if(s.getLastRow()>1)throw Error("Ya existe un usuario administrador.");const salt=Utilities.getUuid()+Utilities.getUuid();s.appendRow([email,hash_(pass,salt),salt,"admin",true]);p.deleteProperty("ADMIN_INITIAL_PASSWORD");Logger.log("Administrador creado: "+email);}
-function login_(email,pass){const v=sh_("Usuarios").getDataRange().getValues(),h=hdr_(v[0]);for(let i=1;i<v.length;i++){const r=v[i];if(String(r[h.correo]).toLowerCase()===email&&yes_(r[h.activo])&&String(r[h.rol]).toLowerCase()==="admin")return hash_(pass,r[h.salt])===String(r[h.password_hash]);}return false;}
+function setupAdmin(){
+  const p=PropertiesService.getScriptProperties(),email=String(p.getProperty("ADMIN_EMAIL")||"").trim().toLowerCase(),pass=String(p.getProperty("ADMIN_INITIAL_PASSWORD")||"");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||pass.length<12)throw Error("Configura correo válido y contraseña de al menos 12 caracteres en Propiedades del script.");
+  const s=ensure_("Usuarios",["correo","password_hash","salt","rol","activo"]);
+  if(s.getLastRow()>1)throw Error("Ya existe un usuario administrador.");
+  const salt=Utilities.getUuid()+Utilities.getUuid();s.appendRow([email,hash_(pass,salt),salt,"admin",true]);p.deleteProperty("ADMIN_INITIAL_PASSWORD");Logger.log("Administrador creado: "+email);
+}
+function login_(email,pass){
+  const v=sh_("Usuarios").getDataRange().getValues(),h=hdr_(v[0]);
+  for(let i=1;i<v.length;i++){const r=v[i];if(String(r[h.correo]).toLowerCase()===email&&yes_(r[h.activo])&&String(r[h.rol]).toLowerCase()==="admin")return hash_(pass,r[h.salt])===String(r[h.password_hash]);}
+  return false;
+}
 function auth_(t){if(!t||CacheService.getScriptCache().get("adm_"+t)!=="1")throw Error("Sesión caducada. Inicia sesión nuevamente.");}
-function productData_(){const s=sh_("Productos"),v=s.getDataRange().getValues(),h=hdr_(v[0]),c={id:col_(h,["id"]),nombre:col_(h,["nombre"]),descripcion:col_(h,["descripcion"]),precio:col_(h,["precio"]),imagen_url:col_(h,["imagen_url"]),categoria:col_(h,["categoria"]),activo:col_(h,["activo"])};if(Object.values(c).some(x=>x<0))throw Error("Productos debe tener id, nombre, descripcion, precio, imagen_url, categoria y activo.");return{s,v,h,c};}
-function listProducts_(){const p=productData_();return p.v.slice(1).map((r,i)=>({_row:i+2,id:String(r[p.c.id]||""),nombre:String(r[p.c.nombre]||""),descripcion:String(r[p.c.descripcion]||""),precio:price_(r[p.c.precio]),imagen_url:String(r[p.c.imagen_url]||""),categoria:String(r[p.c.categoria]||""),activo:yes_(r[p.c.activo])})).filter(x=>x.id);}
-function saveProduct_(d){const p=productData_(),id=clean_(d.id||Utilities.getUuid(),80),name=clean_(d.nombre,160),desc=clean_(d.descripcion,2000),cat=clean_(d.categoria,100),img=clean_(d.imagen_url,1000),price=price_(d.precio),active=d.activo===true||String(d.activo)==="true";if(!name||!Number.isFinite(price)||price<0)throw Error("Nombre y precio válido son obligatorios.");if(img&&!/^https:\/\//i.test(img))throw Error("La imagen debe tener URL HTTPS.");const ix=p.v.findIndex((r,i)=>i>0&&String(r[p.c.id])===id),fresh=ix<0,was=fresh?false:yes_(p.v[ix][p.c.activo]),r=fresh?new Array(p.v[0].length).fill(""):p.v[ix].slice();r[p.c.id]=id;r[p.c.nombre]=name;r[p.c.descripcion]=desc;r[p.c.precio]=price;r[p.c.imagen_url]=img;r[p.c.categoria]=cat;r[p.c.activo]=active;if(fresh)p.s.appendRow(r);else p.s.getRange(ix+1,1,1,r.length).setValues([r]);if(active&&(fresh||!was))notify_(name,desc,fresh?"nuevo":"reactivado");return{status:"ok"};}
-function toggleProduct_(id,active){const p=productData_(),ix=p.v.findIndex((r,i)=>i>0&&String(r[p.c.id])===String(id));if(ix<0)throw Error("Producto no encontrado.");const was=yes_(p.v[ix][p.c.activo]);p.s.getRange(ix+1,p.c.activo+1).setValue(!!active);if(active&&!was)notify_(String(p.v[ix][p.c.nombre]),String(p.v[ix][p.c.descripcion]||""),"reactivado");return{status:"ok"};}
-function deleteProduct_(id){const p=productData_(),ix=p.v.findIndex((r,i)=>i>0&&String(r[p.c.id])===String(id));if(ix<0)throw Error("Producto no encontrado.");if(yes_(p.v[ix][p.c.activo]))throw Error("Primero marca el producto como agotado.");const orders=listOrders_();for(const o of orders){if((o.items||[]).some(it=>String(it.id)===String(id)))throw Error("No se puede eliminar: el producto aparece en pedidos históricos. Déjalo desactivado para conservar trazabilidad.");}p.s.deleteRow(ix+1);return{status:"ok"};}
-function listOrders_(){const s=sh_("Pedidos"),v=s.getDataRange().getValues(),h=hdr_(v[0]),c={timestamp:col_(h,["timestamp"]),nombre:col_(h,["nombre"]),contacto:col_(h,["contacto"]),direccion:col_(h,["direccion"]),notas:col_(h,["notas"]),items:col_(h,["item","items"]),total:col_(h,["total"]),estado:col_(h,["estado"])};return v.slice(1).map((r,i)=>{let items=[];try{items=JSON.parse(String(r[c.items]||"[]"));}catch(e){}return{_row:i+2,timestamp:r[c.timestamp] instanceof Date?r[c.timestamp].toISOString():String(r[c.timestamp]||""),nombre:String(r[c.nombre]||""),contacto:String(r[c.contacto]||""),direccion:String(r[c.direccion]||""),notas:String(r[c.notas]||""),items,total:Number(r[c.total])||0,estado:String(r[c.estado]||"pendiente")};}).reverse();}
-function setOrder_(row,state){if(!ORDER_STATES.includes(state))throw Error("Estado no permitido.");const s=sh_("Pedidos"),v=s.getDataRange().getValues(),c=col_(hdr_(v[0]),["estado"]);if(c<0||row<2||row>v.length)throw Error("Pedido no encontrado.");s.getRange(row,c+1).setValue(state);return{status:"ok"};}
-function subscribe_(email){email=String(email||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw Error("Correo inválido.");const s=ensure_("Suscriptores",["correo","token_verificacion","token_baja","verificado","activo","fecha_registro"]),v=s.getDataRange().getValues(),h=hdr_(v[0]);for(let i=1;i<v.length;i++)if(String(v[i][h.correo]).toLowerCase()===email&&yes_(v[i][h.activo]))return{status:"ok",message:"Si procede, recibirás un correo de confirmación."};const verify=Utilities.getUuid()+Utilities.getUuid(),unsub=Utilities.getUuid()+Utilities.getUuid();s.appendRow([email,verify,unsub,false,true,new Date()]);const url=ScriptApp.getService().getUrl();MailApp.sendEmail(email,"Confirma las notificaciones de Mi Tienda","Confirma aquí tu suscripción a avisos de productos nuevos y reactivados:\n\n"+url+"?action=confirm&token="+encodeURIComponent(verify)+"\n\nSi no lo solicitaste, ignora este correo.");return{status:"ok",message:"Te enviamos un correo para confirmar la suscripción."};}
-function subscriptionAction_(token,confirm){const s=sh_("Suscriptores"),v=s.getDataRange().getValues(),h=hdr_(v[0]),key=confirm?h.token_verificacion:h.token_baja;for(let i=1;i<v.length;i++)if(String(v[i][key])===token){s.getRange(i+1,(confirm?h.verificado:h.activo)+1).setValue(true===confirm?true:false);return confirm?"Suscripción confirmada.":"Suscripción cancelada.";}return"Enlace no válido o caducado.";}
-function notify_(name,desc,event){const s=ensure_("Suscriptores",["correo","token_verificacion","token_baja","verificado","activo","fecha_registro"]),v=s.getDataRange().getValues(),h=hdr_(v[0]),base=ScriptApp.getService().getUrl(),subject=(event==="nuevo"?"Nuevo producto: ":"De nuevo disponible: ")+name;for(let i=1;i<v.length;i++){const r=v[i];if(yes_(r[h.activo])&&yes_(r[h.verificado])){const body=(event==="nuevo"?"Nuevo producto en la tienda.":"Un producto agotado vuelve a estar disponible.")+"\n\n"+name+"\n"+desc+"\n\nVisita la tienda para consultarlo.\n\nCancelar suscripción: "+base+"?action=unsubscribe&token="+encodeURIComponent(r[h.token_baja]);try{MailApp.sendEmail(String(r[h.correo]),subject,body);}catch(e){console.error(e);}}}}
-function doGet(e){const a=e&&e.parameter?e.parameter.action:"";if(a!=="confirm"&&a!=="unsubscribe")return HtmlService.createHtmlOutput("Mi Tienda · Servicio disponible.");const msg=subscriptionAction_(String(e.parameter.token||""),a==="confirm");return HtmlService.createHtmlOutput("<main style='font:16px Arial;max-width:600px;margin:60px auto;padding:24px;color:#173b67'><h2>Mi Tienda</h2><p>"+msg+"</p></main>");}
-function doPost(e){let lock;try{if(!e||!e.postData||!e.postData.contents)throw Error("Solicitud vacía.");const d=JSON.parse(e.postData.contents),a=String(d.action||"create_order");if(a==="subscribe")return out_(subscribe_(d.email));if(a==="admin_login"){const email=String(d.email||"").trim().toLowerCase(),cache=CacheService.getScriptCache(),k="fail_"+Utilities.base64EncodeWebSafe(email),n=Number(cache.get(k)||0);if(n>=8)throw Error("Demasiados intentos. Espera 15 minutos.");if(!login_(email,String(d.password||""))){cache.put(k,String(n+1),900);throw Error("Correo o contraseña incorrectos.");}cache.remove(k);const t=Utilities.getUuid()+Utilities.getUuid();cache.put("adm_"+t,"1",SESSION_TTL);return out_({status:"ok",token:t});}
-if(a.indexOf("admin_")===0){auth_(d.token);if(a==="admin_products")return out_({status:"ok",products:listProducts_()});if(a==="admin_product_save")return out_(saveProduct_(d.product||{}));if(a==="admin_product_active")return out_(toggleProduct_(d.id,!!d.active));if(a==="admin_product_delete")return out_(deleteProduct_(d.id));if(a==="admin_orders")return out_({status:"ok",orders:listOrders_()});if(a==="admin_order_status")return out_(setOrder_(Number(d.row),String(d.estado)));if(a==="admin_logout"){CacheService.getScriptCache().remove("adm_"+d.token);return out_({status:"ok"});}throw Error("Acción administrativa desconocida.");}
-if(a!=="create_order")throw Error("Acción no permitida.");const name=clean_(d.nombre,120),contact=clean_(d.contacto,160),address=clean_(d.direccion,300),notes=clean_(d.notas,1000);if(!name||!contact||!address)throw Error("Nombre, contacto y dirección obligatorios.");if(!Array.isArray(d.items)||!d.items.length||d.items.length>50)throw Error("Pedido vacío o inválido.");const p=productData_(),by={};p.v.slice(1).forEach(r=>by[String(r[p.c.id])]={id:String(r[p.c.id]),nombre:String(r[p.c.nombre]),precio:price_(r[p.c.precio]),activo:yes_(r[p.c.activo])});let cents=0,seen={},items=[];d.items.forEach(it=>{const id=String(it.id||""),qty=Number(it.cantidad),x=by[id];if(!x||!x.activo||seen[id])throw Error("Producto no disponible o repetido.");if(!Number.isInteger(qty)||qty<1||qty>100||!Number.isFinite(x.precio)||x.precio<0)throw Error("Cantidad o precio inválido.");seen[id]=1;const pc=Math.round(x.precio*100),sub=pc*qty;cents+=sub;items.push({id:x.id,nombre:x.nombre,precio:pc/100,cantidad:qty,subtotal:sub/100});});const oid=String(d.orderId||"").replace(/[^\w-]/g,"").slice(0,80);if(!oid)throw Error("Identificador de pedido inválido.");lock=LockService.getScriptLock();if(!lock.tryLock(10000))throw Error("Sistema ocupado.");const cache=CacheService.getScriptCache(),key="order_"+oid;if(cache.get(key))return out_({status:"ok",duplicate:true});const s=sh_("Pedidos"),v=s.getDataRange().getValues(),h=hdr_(v[0]),c={timestamp:col_(h,["timestamp"]),nombre:col_(h,["nombre"]),contacto:col_(h,["contacto"]),direccion:col_(h,["direccion"]),notas:col_(h,["notas"]),items:col_(h,["item","items"]),total:col_(h,["total"]),estado:col_(h,["estado"])};if(Object.values(c).some(x=>x<0))throw Error("Revisa encabezados de Pedidos.");const row=new Array(v[0].length).fill("");row[c.timestamp]=new Date();row[c.nombre]=name;row[c.contacto]=contact;row[c.direccion]=address;row[c.notas]=notes;row[c.items]=JSON.stringify(items);row[c.total]=cents/100;row[c.estado]="pendiente";s.appendRow(row);cache.put(key,"1",21600);return out_({status:"ok",total:cents/100});
-}catch(err){return out_({status:"error",message:err.message||"Error interno."});}finally{if(lock)lock.releaseLock();}}
+function productData_(){
+  const s=sh_("Productos"),v=s.getDataRange().getValues(),h=hdr_(v[0]),c={id:col_(h,["id"]),nombre:col_(h,["nombre"]),descripcion:col_(h,["descripcion"]),precio:col_(h,["precio"]),imagen_url:col_(h,["imagen_url"]),categoria:col_(h,["categoria"]),activo:col_(h,["activo"])};
+  if(Object.values(c).some(x=>x<0))throw Error("Productos debe tener id, nombre, descripcion, precio, imagen_url, categoria y activo.");
+  return{s,v,h,c};
+}
+function listProducts_(){
+  const p=productData_();
+  return p.v.slice(1).map((r,i)=>({_row:i+2,id:String(r[p.c.id]||""),nombre:String(r[p.c.nombre]||""),descripcion:String(r[p.c.descripcion]||""),precio:price_(r[p.c.precio]),imagen_url:String(r[p.c.imagen_url]||""),categoria:String(r[p.c.categoria]||""),activo:yes_(r[p.c.activo])})).filter(x=>x.id);
+}
+function saveProduct_(d){
+  const p=productData_(),id=clean_(d.id||Utilities.getUuid(),80),name=clean_(d.nombre,160),desc=clean_(d.descripcion,2000),cat=clean_(d.categoria,100),img=clean_(d.imagen_url,1000),price=price_(d.precio),active=d.activo===true||String(d.activo)==="true";
+  if(!name||!Number.isFinite(price)||price<0)throw Error("Nombre y precio válido son obligatorios.");
+  if(img&&!/^https:\/\//i.test(img))throw Error("La imagen debe tener URL HTTPS.");
+  const ix=p.v.findIndex((r,i)=>i>0&&String(r[p.c.id])===id),fresh=ix<0,was=fresh?false:yes_(p.v[ix][p.c.activo]),r=fresh?new Array(p.v[0].length).fill(""):p.v[ix].slice();
+  r[p.c.id]=id;r[p.c.nombre]=name;r[p.c.descripcion]=desc;r[p.c.precio]=price;r[p.c.imagen_url]=img;r[p.c.categoria]=cat;r[p.c.activo]=active;
+  if(fresh)p.s.appendRow(r);else p.s.getRange(ix+1,1,1,r.length).setValues([r]);
+  if(active&&(fresh||!was))notify_(name,desc,fresh?"nuevo":"reactivado");
+  return{status:"ok"};
+}
+function toggleProduct_(id,active){
+  const p=productData_(),ix=p.v.findIndex((r,i)=>i>0&&String(r[p.c.id])===String(id));
+  if(ix<0)throw Error("Producto no encontrado.");
+  const was=yes_(p.v[ix][p.c.activo]);p.s.getRange(ix+1,p.c.activo+1).setValue(!!active);
+  if(active&&!was)notify_(String(p.v[ix][p.c.nombre]),String(p.v[ix][p.c.descripcion]||""),"reactivado");
+  return{status:"ok"};
+}
+function deleteProduct_(id){
+  const p=productData_(),ix=p.v.findIndex((r,i)=>i>0&&String(r[p.c.id])===String(id));
+  if(ix<0)throw Error("Producto no encontrado.");
+  if(yes_(p.v[ix][p.c.activo]))throw Error("Primero marca el producto como agotado.");
+  const orders=listOrders_();
+  for(const o of orders)if((o.items||[]).some(it=>String(it.id)===String(id)))throw Error("No se puede eliminar: el producto aparece en pedidos históricos. Déjalo desactivado para conservar trazabilidad.");
+  p.s.deleteRow(ix+1);return{status:"ok"};
+}
+function listOrders_(){
+  const s=sh_("Pedidos"),c=orderColumns_(s),v=s.getDataRange().getValues();
+  return v.slice(1).map((r,i)=>{
+    let items=[];try{items=JSON.parse(String(r[c.items]||"[]"));}catch(e){}
+    const compradorNombre=String(r[c.comprador_nombre]||r[c.nombre]||"");
+    const compradorTelefono=String(r[c.comprador_telefono]||r[c.contacto]||"");
+    return{
+      _row:i+2,
+      timestamp:r[c.timestamp] instanceof Date?r[c.timestamp].toISOString():String(r[c.timestamp]||""),
+      compradorNombre,compradorTelefono,
+      recibeNombre:String(r[c.recibe_nombre]||""),
+      recibeTelefono:String(r[c.recibe_telefono]||""),
+      // Alias de compatibilidad para la interfaz/órdenes antiguas.
+      nombre:compradorNombre,contacto:compradorTelefono,
+      direccion:String(r[c.direccion]||""),notas:String(r[c.notas]||""),
+      items,total:Number(r[c.total])||0,estado:String(r[c.estado]||"pendiente")
+    };
+  }).reverse();
+}
+function setOrder_(row,state){
+  if(!ORDER_STATES.includes(state))throw Error("Estado no permitido.");
+  const s=sh_("Pedidos"),v=s.getDataRange().getValues(),c=col_(hdr_(v[0]),["estado"]);
+  if(c<0||row<2||row>v.length)throw Error("Pedido no encontrado.");
+  s.getRange(row,c+1).setValue(state);return{status:"ok"};
+}
+function subscribe_(email){
+  email=String(email||"").trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw Error("Correo inválido.");
+  const s=ensure_("Suscriptores",["correo","token_verificacion","token_baja","verificado","activo","fecha_registro"]),v=s.getDataRange().getValues(),h=hdr_(v[0]);
+  for(let i=1;i<v.length;i++)if(String(v[i][h.correo]).toLowerCase()===email&&yes_(v[i][h.activo]))return{status:"ok",message:"Si procede, recibirás un correo de confirmación."};
+  const verify=Utilities.getUuid()+Utilities.getUuid(),unsub=Utilities.getUuid()+Utilities.getUuid();s.appendRow([email,verify,unsub,false,true,new Date()]);
+  const url=ScriptApp.getService().getUrl();MailApp.sendEmail(email,"Confirma las notificaciones de Mi Tienda","Confirma aquí tu suscripción a avisos de productos nuevos y reactivados:\n\n"+url+"?action=confirm&token="+encodeURIComponent(verify)+"\n\nSi no lo solicitaste, ignora este correo.");
+  return{status:"ok",message:"Te enviamos un correo para confirmar la suscripción."};
+}
+function subscriptionAction_(token,confirm){
+  const s=sh_("Suscriptores"),v=s.getDataRange().getValues(),h=hdr_(v[0]),key=confirm?h.token_verificacion:h.token_baja;
+  for(let i=1;i<v.length;i++)if(String(v[i][key])===token){s.getRange(i+1,(confirm?h.verificado:h.activo)+1).setValue(true===confirm?true:false);return confirm?"Suscripción confirmada.":"Suscripción cancelada.";}
+  return"Enlace no válido o caducado.";
+}
+function notify_(name,desc,event){
+  const s=ensure_("Suscriptores",["correo","token_verificacion","token_baja","verificado","activo","fecha_registro"]),v=s.getDataRange().getValues(),h=hdr_(v[0]),base=ScriptApp.getService().getUrl(),subject=(event==="nuevo"?"Nuevo producto: ":"De nuevo disponible: ")+name;
+  for(let i=1;i<v.length;i++){const r=v[i];if(yes_(r[h.activo])&&yes_(r[h.verificado])){const body=(event==="nuevo"?"Nuevo producto en la tienda.":"Un producto agotado vuelve a estar disponible.")+"\n\n"+name+"\n"+desc+"\n\nVisita la tienda para consultarlo.\n\nCancelar suscripción: "+base+"?action=unsubscribe&token="+encodeURIComponent(r[h.token_baja]);try{MailApp.sendEmail(String(r[h.correo]),subject,body);}catch(e){console.error(e);}}}
+}
+function doGet(e){
+  const a=e&&e.parameter?e.parameter.action:"";
+  if(a!=="confirm"&&a!=="unsubscribe")return HtmlService.createHtmlOutput("Mi Tienda · Servicio disponible.");
+  const msg=subscriptionAction_(String(e.parameter.token||""),a==="confirm");
+  return HtmlService.createHtmlOutput("<main style='font:16px Arial;max-width:600px;margin:60px auto;padding:24px;color:#173b67'><h2>Mi Tienda</h2><p>"+msg+"</p></main>");
+}
+function doPost(e){
+  let lock;
+  try{
+    if(!e||!e.postData||!e.postData.contents)throw Error("Solicitud vacía.");
+    const d=JSON.parse(e.postData.contents),a=String(d.action||"create_order");
+    if(a==="subscribe")return out_(subscribe_(d.email));
+    if(a==="admin_login"){
+      const email=String(d.email||"").trim().toLowerCase(),cache=CacheService.getScriptCache(),k="fail_"+Utilities.base64EncodeWebSafe(email),n=Number(cache.get(k)||0);
+      if(n>=8)throw Error("Demasiados intentos. Espera 15 minutos.");
+      if(!login_(email,String(d.password||""))){cache.put(k,String(n+1),900);throw Error("Correo o contraseña incorrectos.");}
+      cache.remove(k);const t=Utilities.getUuid()+Utilities.getUuid();cache.put("adm_"+t,"1",SESSION_TTL);return out_({status:"ok",token:t});
+    }
+    if(a.indexOf("admin_")===0){
+      auth_(d.token);
+      if(a==="admin_products")return out_({status:"ok",products:listProducts_()});
+      if(a==="admin_product_save")return out_(saveProduct_(d.product||{}));
+      if(a==="admin_product_active")return out_(toggleProduct_(d.id,!!d.active));
+      if(a==="admin_product_delete")return out_(deleteProduct_(d.id));
+      if(a==="admin_orders")return out_({status:"ok",orders:listOrders_()});
+      if(a==="admin_order_status")return out_(setOrder_(Number(d.row),String(d.estado)));
+      if(a==="admin_logout"){CacheService.getScriptCache().remove("adm_"+d.token);return out_({status:"ok"});}
+      throw Error("Acción administrativa desconocida.");
+    }
+    if(a!=="create_order")throw Error("Acción no permitida.");
+
+    const compradorNombre=clean_(d.compradorNombre||d.nombre,120);
+    const compradorTelefono=clean_(d.compradorTelefono||d.contacto,30);
+    const recibeNombre=clean_(d.recibeNombre,120);
+    const recibeTelefono=clean_(d.recibeTelefono,30);
+    const address=clean_(d.direccion,300),notes=clean_(d.notas,1000);
+    const phoneOk=(v)=>v.replace(/\D/g,"").length>=7&&v.replace(/\D/g,"").length<=15;
+    if(!compradorNombre||!phoneOk(compradorTelefono)||!recibeNombre||!phoneOk(recibeTelefono)||!address)
+      throw Error("Revisa los nombres, teléfonos y dirección. Los dos teléfonos son obligatorios y deben tener entre 7 y 15 dígitos.");
+    if(!Array.isArray(d.items)||!d.items.length||d.items.length>50)throw Error("Pedido vacío o inválido.");
+
+    const p=productData_(),by={};
+    p.v.slice(1).forEach(r=>by[String(r[p.c.id])]={id:String(r[p.c.id]),nombre:String(r[p.c.nombre]),precio:price_(r[p.c.precio]),activo:yes_(r[p.c.activo])});
+    let cents=0,seen={},items=[];
+    d.items.forEach(it=>{
+      const id=String(it.id||""),qty=Number(it.cantidad),x=by[id];
+      if(!x||!x.activo||seen[id])throw Error("Producto no disponible o repetido.");
+      if(!Number.isInteger(qty)||qty<1||qty>100||!Number.isFinite(x.precio)||x.precio<0)throw Error("Cantidad o precio inválido.");
+      seen[id]=1;const pc=Math.round(x.precio*100),sub=pc*qty;cents+=sub;
+      items.push({id:x.id,nombre:x.nombre,precio:pc/100,cantidad:qty,subtotal:sub/100});
+    });
+
+    const oid=String(d.orderId||"").replace(/[^\w-]/g,"").slice(0,80);
+    if(!oid)throw Error("Identificador de pedido inválido.");
+    lock=LockService.getScriptLock();if(!lock.tryLock(10000))throw Error("Sistema ocupado.");
+    const cache=CacheService.getScriptCache(),key="order_"+oid;
+    if(cache.get(key))return out_({status:"ok",duplicate:true});
+
+    const s=sh_("Pedidos"),c=orderColumns_(s),row=new Array(s.getLastColumn()).fill("");
+    row[c.timestamp]=new Date();
+    row[c.nombre]=compradorNombre;row[c.contacto]=compradorTelefono;
+    row[c.comprador_nombre]=compradorNombre;row[c.comprador_telefono]=compradorTelefono;
+    row[c.recibe_nombre]=recibeNombre;row[c.recibe_telefono]=recibeTelefono;
+    row[c.direccion]=address;row[c.notas]=notes;row[c.items]=JSON.stringify(items);
+    row[c.total]=cents/100;row[c.estado]="pendiente";
+    s.appendRow(row);cache.put(key,"1",21600);
+    return out_({status:"ok",total:cents/100});
+  }catch(err){
+    return out_({status:"error",message:err.message||"Error interno."});
+  }finally{
+    if(lock)lock.releaseLock();
+  }
+}
