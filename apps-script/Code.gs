@@ -1,7 +1,7 @@
 /** Mi Tienda: pedidos, panel administrativo y suscripciones. */
 const SPREADSHEET_ID = "17gbBJ2ScPe5_LlSMnggPgSgoJjOemartut7K-OM96V4";
 const SESSION_TTL = 21600;
-const ORDER_STATES = ["pendiente", "confirmado", "pagado", "enviado", "entregado", "cancelado", "eliminado"];
+const ORDER_STATES = ["pendiente", "confirmado", "pagado", "enviado", "listo_entrega", "entregado", "cancelado", "eliminado"];
 
 function out_(x){return ContentService.createTextOutput(JSON.stringify(x)).setMimeType(ContentService.MimeType.JSON);}
 function sh_(n){const s=SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(n);if(!s)throw Error('No existe la pestaña "'+n+'".');return s;}
@@ -12,6 +12,7 @@ function clean_(v,n){let s=String(v==null?"":v).trim().slice(0,n);return /^[=+\-
 function price_(v){if(typeof v==="number")return v;let s=String(v||"").replace(/\s/g,"");if(s.includes(",")&&s.includes("."))s=s.lastIndexOf(",")>s.lastIndexOf(".")?s.replace(/\./g,"").replace(",","."):s.replace(/,/g,"");else s=s.replace(",",".");return Number(s);}
 function ensure_(name,heads){let s=SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(name);if(!s)s=SpreadsheetApp.openById(SPREADSHEET_ID).insertSheet(name);if(!s.getLastRow())s.appendRow(heads);return s;}
 function hash_(p,s){return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,s+String(p),Utilities.Charset.UTF_8));}
+
 /** Añade las columnas nuevas al final si la hoja ya existía. No borra ni mueve datos. */
 function ensureOrderColumns_(s){
   const required=["timestamp","nombre","contacto","direccion","notas","items","total","estado","comprador_nombre","comprador_telefono","recibe_nombre","recibe_telefono"];
@@ -77,6 +78,8 @@ function deleteProduct_(id){
   for(const o of orders)if((o.items||[]).some(it=>String(it.id)===String(id)))throw Error("No se puede eliminar: el producto aparece en pedidos históricos. Déjalo desactivado para conservar trazabilidad.");
   p.s.deleteRow(ix+1);return{status:"ok"};
 }
+
+/** Devuelve pedidos del más antiguo al más reciente. */
 function listOrders_(){
   const s=sh_("Pedidos"),c=orderColumns_(s),v=s.getDataRange().getValues();
   return v.slice(1).map((r,i)=>{
@@ -89,12 +92,35 @@ function listOrders_(){
       compradorNombre,compradorTelefono,
       recibeNombre:String(r[c.recibe_nombre]||""),
       recibeTelefono:String(r[c.recibe_telefono]||""),
-      // Alias de compatibilidad para la interfaz/órdenes antiguas.
       nombre:compradorNombre,contacto:compradorTelefono,
       direccion:String(r[c.direccion]||""),notas:String(r[c.notas]||""),
       items,total:Number(r[c.total])||0,estado:String(r[c.estado]||"pendiente")
     };
-  }).reverse();
+  }).sort((a,b)=>(Date.parse(a.timestamp)||0)-(Date.parse(b.timestamp)||0)||a._row-b._row);
+}
+
+/** Guarda el avance de preparación dentro del JSON de productos del pedido. */
+function updateOrderItems_(row,prepared){
+  const s=sh_("Pedidos"),v=s.getDataRange().getValues(),c=orderColumns_(s);
+  if(!Number.isInteger(row)||row<2||row>v.length)throw Error("Pedido no encontrado.");
+  let items=[];
+  try{items=JSON.parse(String(v[row-1][c.items]||"[]"));}catch(e){throw Error("Los productos del pedido no tienen un formato válido.");}
+  if(!Array.isArray(items)||!items.length||!Array.isArray(prepared)||prepared.length!==items.length)throw Error("La lista de productos no coincide con el pedido.");
+  items=items.map((it,i)=>({...it,preparado:prepared[i]===true}));
+  s.getRange(row,c.items+1).setValue(JSON.stringify(items));
+  const all=items.every(it=>it.preparado===true);
+  const current=String(v[row-1][c.estado]||"pendiente");
+  if(all)s.getRange(row,c.estado+1).setValue("listo_entrega");
+  else if(current==="listo_entrega")s.getRange(row,c.estado+1).setValue("pendiente");
+  return{status:"ok",estado:all?"listo_entrega":(current==="listo_entrega"?"pendiente":current)};
+}
+
+/** Elimina únicamente la fila del pedido solicitado. */
+function deleteOrder_(row){
+  const s=sh_("Pedidos");
+  if(!Number.isInteger(row)||row<2||row>s.getLastRow())throw Error("Pedido no encontrado.");
+  s.deleteRow(row);
+  return{status:"ok"};
 }
 function setOrder_(row,state){
   if(!ORDER_STATES.includes(state))throw Error("Estado no permitido.");
@@ -145,6 +171,14 @@ function doPost(e){
       if(a==="admin_product_active")return out_(toggleProduct_(d.id,!!d.active));
       if(a==="admin_product_delete")return out_(deleteProduct_(d.id));
       if(a==="admin_orders")return out_({status:"ok",orders:listOrders_()});
+      if(a==="admin_order_items"){
+        lock=LockService.getScriptLock();if(!lock.tryLock(10000))throw Error("Sistema ocupado. Inténtalo nuevamente.");
+        return out_(updateOrderItems_(Number(d.row),d.prepared));
+      }
+      if(a==="admin_order_delete"){
+        lock=LockService.getScriptLock();if(!lock.tryLock(10000))throw Error("Sistema ocupado. Inténtalo nuevamente.");
+        return out_(deleteOrder_(Number(d.row)));
+      }
       if(a==="admin_order_status")return out_(setOrder_(Number(d.row),String(d.estado)));
       if(a==="admin_logout"){CacheService.getScriptCache().remove("adm_"+d.token);return out_({status:"ok"});}
       throw Error("Acción administrativa desconocida.");
