@@ -93,7 +93,7 @@ export default function CartDrawer({ open, onClose }) {
                   }}
                 />
                 <div className="cart-subtotal">
-                  <span>Subtotal</span>
+                  <span></span>
                   <strong>{formatCurrency(item.precio * item.cantidad)}</strong>
                 </div>
               </div>
