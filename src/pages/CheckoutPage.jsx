@@ -5,11 +5,9 @@ import { formatCurrency } from "../hooks/useCurrency";
 import { notifyOrder, sendOrder } from "../utils/order";
 import { ArrowLeft } from "lucide-react";
 
-function validContact(value) {
-  const contact = value.trim();
-  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
-  const phone = /^\+?[0-9\s().-]{7,}$/.test(contact);
-  return email || phone;
+function validPhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
 }
 
 function createOrderId() {
@@ -20,7 +18,14 @@ function createOrderId() {
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ nombre: "", contacto: "", direccion: "", notas: "" });
+  const [form, setForm] = useState({
+    compradorNombre: "",
+    compradorTelefono: "",
+    recibeNombre: "",
+    recibeTelefono: "",
+    direccion: "",
+    notas: ""
+  });
   const [orderId] = useState(createOrderId);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -32,22 +37,37 @@ export default function CheckoutPage() {
     </section>
   );
 
-  function update(e) { setForm({ ...form, [e.target.name]: e.target.value }); }
+  function update(e) {
+    setForm((previous) => ({ ...previous, [e.target.name]: e.target.value }));
+  }
 
   async function submit(e) {
     e.preventDefault();
     setError("");
-    if (!form.nombre.trim()) return setError("Escribe tu nombre.");
-    if (!validContact(form.contacto)) return setError("Introduce un email o teléfono válido.");
+
+    if (!form.compradorNombre.trim()) return setError("Escribe los nombres y apellidos del comprador.");
+    if (!validPhone(form.compradorTelefono)) return setError("Introduce un teléfono válido del comprador (entre 7 y 15 dígitos).");
+    if (!form.recibeNombre.trim()) return setError("Escribe los nombres y apellidos de quien recibe el pedido.");
+    if (!validPhone(form.recibeTelefono)) return setError("Introduce un teléfono válido de quien recibe el pedido (entre 7 y 15 dígitos).");
     if (!form.direccion.trim()) return setError("Introduce la dirección de entrega.");
 
     const order = {
       orderId,
-      nombre: form.nombre.trim(),
-      contacto: form.contacto.trim(),
+      compradorNombre: form.compradorNombre.trim(),
+      compradorTelefono: form.compradorTelefono.trim(),
+      recibeNombre: form.recibeNombre.trim(),
+      recibeTelefono: form.recibeTelefono.trim(),
       direccion: form.direccion.trim(),
       notas: form.notas.trim(),
-      items: items.map(({ id, nombre, precio, cantidad }) => ({ id, nombre, precio: Number(precio), cantidad: Math.max(1, parseInt(cantidad) || 1) })),
+      // Se mantienen estos alias para compatibilidad con integraciones antiguas.
+      nombre: form.compradorNombre.trim(),
+      contacto: form.compradorTelefono.trim(),
+      items: items.map(({ id, nombre, precio, cantidad }) => ({
+        id,
+        nombre,
+        precio: Number(precio),
+        cantidad: Math.max(1, parseInt(cantidad, 10) || 1)
+      })),
       total: Number(total.toFixed(2))
     };
 
@@ -69,16 +89,31 @@ export default function CheckoutPage() {
         <Link to="/carrito" className="back-link"><ArrowLeft size={14} /> Volver al carrito</Link>
         <h1>Finalizar pedido</h1>
         <form className="checkout-form" onSubmit={submit}>
-          <label className="field"><span>Nombre completo *</span>
-            <input name="nombre" value={form.nombre} onChange={update} maxLength="120" required />
+          <h2>Datos del comprador</h2>
+          <label className="field">
+            <span>Nombres y apellidos del comprador *</span>
+            <input name="compradorNombre" value={form.compradorNombre} onChange={update} maxLength="120" autoComplete="name" required />
           </label>
-          <label className="field"><span>Email o teléfono *</span>
-            <input name="contacto" value={form.contacto} onChange={update} maxLength="160" required />
+          <label className="field">
+            <span>Teléfono del comprador *</span>
+            <input name="compradorTelefono" type="tel" inputMode="tel" value={form.compradorTelefono} onChange={update} maxLength="30" autoComplete="tel" required />
           </label>
-          <label className="field"><span>Dirección de entrega *</span>
+
+          <h2>Datos de quien recibe</h2>
+          <label className="field">
+            <span>Nombres y apellidos de quien recibe *</span>
+            <input name="recibeNombre" value={form.recibeNombre} onChange={update} maxLength="120" required />
+          </label>
+          <label className="field">
+            <span>Teléfono de quien recibe *</span>
+            <input name="recibeTelefono" type="tel" inputMode="tel" value={form.recibeTelefono} onChange={update} maxLength="30" required />
+          </label>
+          <label className="field">
+            <span>Dirección de entrega *</span>
             <textarea name="direccion" rows="2" value={form.direccion} onChange={update} maxLength="300" required />
           </label>
-          <label className="field"><span>Notas (opcional)</span>
+          <label className="field">
+            <span>Notas (opcional)</span>
             <textarea name="notas" rows="3" value={form.notas} onChange={update} maxLength="1000" />
           </label>
           {error && <p className="form-error" role="alert">{error}</p>}
@@ -91,8 +126,10 @@ export default function CheckoutPage() {
       <aside className="order-summary">
         <h2>Resumen del pedido</h2>
         <div className="summary-customer">
-          {form.nombre && <div className="summary-customer-row"><span>Cliente</span><strong>{form.nombre}</strong></div>}
-          {form.contacto && <div className="summary-customer-row"><span>Contacto</span><strong>{form.contacto}</strong></div>}
+          {form.compradorNombre && <div className="summary-customer-row"><span>Comprador</span><strong>{form.compradorNombre}</strong></div>}
+          {form.compradorTelefono && <div className="summary-customer-row"><span>Teléfono comprador</span><strong>{form.compradorTelefono}</strong></div>}
+          {form.recibeNombre && <div className="summary-customer-row"><span>Recibe</span><strong>{form.recibeNombre}</strong></div>}
+          {form.recibeTelefono && <div className="summary-customer-row"><span>Teléfono recibe</span><strong>{form.recibeTelefono}</strong></div>}
           {form.direccion && <div className="summary-customer-row"><span>Dirección</span><strong>{form.direccion}</strong></div>}
         </div>
         <h3 className="summary-items-title">Productos</h3>
