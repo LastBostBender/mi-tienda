@@ -1,5 +1,6 @@
+
 import { Navigate, Route, Routes } from "react-router-dom";
-import AdminPage from "./pages/AdminPage";
+import AdminPage from "./AdminPage";
 
 export default function AdminApp() {
   return (
