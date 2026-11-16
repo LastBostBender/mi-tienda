@@ -9,5 +9,16 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main-admin.jsx"></script>
+
+<!-- Inicializa el mismo tema que utiliza el cliente -->
+<script>
+  try {
+    var t = localStorage.getItem("tienda-theme") || "light";
+    document.documentElement.setAttribute("data-theme", t);
+  } catch(e) {
+    document.documentElement.setAttribute("data-theme", "light");
+  }
+</script>
+
   </body>
 </html>
