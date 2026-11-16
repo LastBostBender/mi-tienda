@@ -17,6 +17,7 @@ export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState("productos");
+  const [orderTab, setOrderTab] = useState("pendientes");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [activeEditor, setActiveEditor] = useState(null);
@@ -217,41 +218,60 @@ export default function AdminPage() {
       ) : (
         <div className="admin-panel admin-orders-panel">
           <h2>Pedidos</h2>
-          <div className="admin-order-board">
-            <OrderColumn title="Pendientes" orders={pendingOrders} empty="No hay pedidos pendientes.">
-              {o => (
-                <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder}>
-                  <div className="order-items-checklist">
-                    <div className="order-checklist-heading">
-                      <strong>Preparación</strong>
-                      <button type="button" className="order-text-button" disabled={busy}
-                        onClick={() => updatePrepared(o, (o.items || []).map(() => true))}>Marcar todos</button>
+
+          <div className="admin-order-tabs">
+            <button type="button" className={orderTab === "pendientes" ? "active" : ""} onClick={() => setOrderTab("pendientes")}>
+              Pendientes <span>{pendingOrders.length}</span>
+            </button>
+            <button type="button" className={orderTab === "listos" ? "active" : ""} onClick={() => setOrderTab("listos")}>
+              Listos para entregar <span>{readyOrders.length}</span>
+            </button>
+            <button type="button" className={orderTab === "entregados" ? "active" : ""} onClick={() => setOrderTab("entregados")}>
+              Entregados <span>{deliveredOrders.length}</span>
+            </button>
+          </div>
+
+          <div className="admin-order-content">
+            {orderTab === "pendientes" && (
+              <OrderColumn title="Pedidos pendientes" orders={pendingOrders} empty="No hay pedidos pendientes.">
+                {o => (
+                  <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder}>
+                    <div className="order-items-checklist">
+                      <div className="order-checklist-heading">
+                        <strong>Preparación</strong>
+                        <button type="button" className="order-text-button" disabled={busy}
+                          onClick={() => updatePrepared(o, (o.items || []).map(() => true))}>Marcar todos</button>
+                      </div>
+                      {(o.items || []).map((it, i) => (
+                        <label className="order-item-check" key={i}>
+                          <input type="checkbox" checked={!!it.preparado} disabled={busy}
+                            onChange={e => updatePrepared(o, (o.items || []).map((x, j) => j === i ? e.target.checked : !!x.preparado))} />
+                          <span>{it.nombre} × {it.cantidad}</span>
+                          <small>{formatCurrency(it.subtotal ?? (Number(it.precio) * Number(it.cantidad)))}</small>
+                        </label>
+                      ))}
                     </div>
-                    {(o.items || []).map((it, i) => (
-                      <label className="order-item-check" key={i}>
-                        <input type="checkbox" checked={!!it.preparado} disabled={busy}
-                          onChange={e => updatePrepared(o, (o.items || []).map((x, j) => j === i ? e.target.checked : !!x.preparado))} />
-                        <span>{it.nombre} × {it.cantidad}</span>
-                        <small>{formatCurrency(it.subtotal ?? (Number(it.precio) * Number(it.cantidad)))}</small>
-                      </label>
-                    ))}
-                  </div>
-                </OrderCard>
-              )}
-            </OrderColumn>
+                  </OrderCard>
+                )}
+              </OrderColumn>
+            )}
 
-            <OrderColumn title="Listos para entrega" orders={readyOrders} empty="Todavía no hay pedidos listos.">
-              {o => (
-                <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder}>
-                  <button type="button" className="button button-primary order-delivery-button" disabled={busy}
-                    onClick={() => confirmDelivery(o)}><Check size={16} /> Confirmar entrega</button>
-                </OrderCard>
-              )}
-            </OrderColumn>
+            {orderTab === "listos" && (
+              <OrderColumn title="Pedidos listos para entrega" orders={readyOrders} empty="Todavía no hay pedidos listos.">
+                {o => (
+                  <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder}>
+                    <button type="button" className="button button-primary order-delivery-button" disabled={busy}
+                      onClick={() => confirmDelivery(o)}><Check size={16} /> Confirmar entrega</button>
+                  </OrderCard>
+                )}
+              </OrderColumn>
+            )}
 
-            <OrderColumn title="Entregados" orders={deliveredOrders} empty="Todavía no hay pedidos entregados.">
-              {o => <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder} />}
-            </OrderColumn>
+            {orderTab === "entregados" && (
+              <OrderColumn title="Pedidos entregados" orders={deliveredOrders} empty="Todavía no hay pedidos entregados.">
+                {o => <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder} />}
+              </OrderColumn>
+            )}
           </div>
         </div>
       )}

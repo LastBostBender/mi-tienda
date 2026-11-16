@@ -124,3 +124,79 @@
   .admin-order-board { grid-template-columns: 1fr; }
   .order-column { padding: 9px; }
 }
+
+/* Pestañas para separar los pedidos por estado */
+.admin-order-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 6px;
+  background: var(--bg-body);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.admin-order-tabs button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: .8rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.admin-order-tabs button:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.admin-order-tabs button.active {
+  color: var(--accent);
+  background: var(--bg-surface);
+  border-color: var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.admin-order-tabs button span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 23px;
+  height: 23px;
+  padding: 0 6px;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 20px;
+  font-size: .7rem;
+  font-weight: 750;
+}
+.admin-order-content {
+  min-width: 0;
+}
+.admin-order-content .order-column {
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .admin-order-tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+  .admin-order-tabs button {
+    flex-direction: column;
+    gap: 4px;
+    min-height: 58px;
+    padding: 6px 3px;
+    font-size: .68rem;
+    text-align: center;
+  }
+  .admin-order-tabs button span {
+    min-width: 21px;
+    height: 21px;
+  }
+}
