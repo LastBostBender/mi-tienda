@@ -1,3 +1,4 @@
+
 import { Navigate, Route, Routes } from "react-router-dom";
 import Header from "./components/Header";
 import CatalogPage from "./pages/CatalogPage";
@@ -20,7 +21,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <footer className="site-footer">Catálogo y pedidos · Mi Tienda</footer>
+      <footer className="site-footer">webshop · DALE</footer>
     </>
   );
 }
