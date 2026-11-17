@@ -1,15 +1,20 @@
+
 <!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#C0392B" />
-    <meta name="description" content="Catálogo y tienda en línea." />
-    <title>Mi tienda</title>
+    <meta name="theme-color" content="#77901D" />
+    <meta name="description" content="webshop DALE. Catálogo y tienda en línea." />
+
+    <link rel="icon" type="image/png" href="./icon-icon.png" />
+    <link rel="apple-touch-icon" href="./icon-icon.png" />
+
+    <title>webshop DALE</title>
   </head>
   <body>
     <div id="root"></div>
-    <!-- Aplica el tema guardado antes de que React hidrate para evitar flash -->
+
     <script>
       try {
         var t = localStorage.getItem("tienda-theme") || "light";
@@ -18,6 +23,7 @@
         document.documentElement.setAttribute("data-theme", "light");
       }
     </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
