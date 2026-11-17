@@ -1,16 +1,23 @@
-import { Link } from "react-router-dom";
 
-// Pon tu nombre/logo aquí
-const NOMBRE = "Mi Tienda";
-// const LOGO_URL = "/logo.svg"; // descomenta si tienes logo
+import { Link } from "react-router-dom";
 
 export default function Header() {
   return (
     <header className="site-header">
       <div className="container header-inner">
-        <Link className="brand" to="/" aria-label={NOMBRE}>
-          {/* LOGO_URL ? <img src={LOGO_URL} alt={NOMBRE} /> : NOMBRE */}
-          {NOMBRE}
+        <Link
+          className="brand"
+          to="/"
+          aria-label="webshop DALE"
+          style={{ textTransform: "none" }}
+        >
+          <span>webshop</span>
+          <img
+            src="./icon-icon.png"
+            alt=""
+            aria-hidden="true"
+          />
+          <span>DALE</span>
         </Link>
       </div>
     </header>
