@@ -1,10 +1,23 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
-import { writeFileSync, mkdirSync, readFileSync, unlinkSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync, unlinkSync, copyFileSync } from "fs";
 
-// Plugin que mueve dist/index-admin.html → dist/admin/index.html después del build
-// y corrige las rutas relativas para que funcionen desde el subdirectorio /admin/.
+// GitHub Pages publica dist; copia allí los dos archivos gráficos que están en la raíz.
+function copyBrandAssets() {
+  return {
+    name: "copy-brand-assets",
+    closeBundle() {
+      const root = resolve(__dirname);
+      const dist = resolve(__dirname, "dist");
+      for (const file of ["icon.png", "icon-icon.png"]) {
+        copyFileSync(resolve(root, file), resolve(dist, file));
+      }
+    },
+  };
+}
+
+// Mueve dist/index-admin.html → dist/admin/index.html y corrige rutas relativas.
 function moveAdminHtml() {
   return {
     name: "move-admin-html",
@@ -14,8 +27,6 @@ function moveAdminHtml() {
         const destDir = resolve(__dirname, "dist/admin");
         const dest = resolve(destDir, "index.html");
         mkdirSync(destDir, { recursive: true });
-        // Reemplaza "./assets/" y "./admin/assets/" → "../assets/" y "./assets/"
-        // para que los paths sean correctos desde /admin/index.html
         let html = readFileSync(src, "utf-8");
         html = html
           .replace(/src="\.\/admin\/assets\//g, 'src="./assets/')
@@ -31,10 +42,8 @@ function moveAdminHtml() {
   };
 }
 
-// Build multi-entry: la tienda se publica en la raíz y el panel de administración
-// en el subdirectorio /admin. Ambos usan HashRouter para funcionar en GitHub Pages.
 export default defineConfig({
-  plugins: [react(), moveAdminHtml()],
+  plugins: [react(), moveAdminHtml(), copyBrandAssets()],
   base: "./",
   build: {
     rollupOptions: {
@@ -43,7 +52,6 @@ export default defineConfig({
         admin: resolve(__dirname, "index-admin.html"),
       },
       output: {
-        // Todos los JS (tienda y admin) van en assets/ raíz para simplificar las rutas.
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
         assetFileNames: "assets/[name]-[hash].[ext]",
