@@ -259,7 +259,7 @@ export default function AdminPage() {
             {orderTab === "listos" && (
               <OrderColumn title="Pedidos listos para entrega" orders={readyOrders} empty="Todavía no hay pedidos listos.">
                 {o => (
-                  <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder}>
+                  <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder} variant="ready">
                     <button type="button" className="button button-primary order-delivery-button" disabled={busy}
                       onClick={() => confirmDelivery(o)}><Check size={16} /> Confirmar entrega</button>
                   </OrderCard>
@@ -269,7 +269,7 @@ export default function AdminPage() {
 
             {orderTab === "entregados" && (
               <OrderColumn title="Pedidos entregados" orders={deliveredOrders} empty="Todavía no hay pedidos entregados.">
-                {o => <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder} />}
+                {o => <OrderCard key={o._row} order={o} busy={busy} onDelete={removeOrder} variant="delivered" />}
               </OrderColumn>
             )}
           </div>
@@ -288,9 +288,12 @@ function OrderColumn({ title, orders, empty, children }) {
   );
 }
 
-function OrderCard({ order: o, busy, onDelete, children }) {
+function OrderCard({ order: o, busy, onDelete, children, variant = "pending" }) {
+  const showDeliveryDetails = variant === "ready";
+  const showProductSummary = variant === "ready" || variant === "delivered";
+
   return (
-    <article className="order-card">
+    <article className={`order-card order-card-${variant}`}>
       <div className="order-card-top">
         <div><strong>{o.compradorNombre || o.nombre || "Cliente"}</strong>
           <small>{o.timestamp ? new Date(o.timestamp).toLocaleString() : "Fecha no disponible"}</small>
@@ -300,15 +303,28 @@ function OrderCard({ order: o, busy, onDelete, children }) {
           <Trash2 size={17} />
         </button>
       </div>
-      <div className="order-card-contact">
-        <span>Comprador: {o.compradorTelefono || o.contacto || "—"}</span>
-        <strong>Recibe: {o.recibeNombre || "No indicado"}</strong>
-        <span>Teléfono: {o.recibeTelefono || "No indicado"}</span>
-        <span>Dirección: {o.direccion || "No indicada"}</span>
-        {o.notas && <span>Nota: {o.notas}</span>}
-      </div>
-      {!children && <div className="order-delivered-items">{(o.items || []).map((it, i) => <small key={i}>{it.nombre} × {it.cantidad}</small>)}</div>}
+
+      {showDeliveryDetails && (
+        <div className="order-card-contact">
+          <span>Teléfono del comprador: {o.compradorTelefono || o.contacto || "—"}</span>
+          <strong>Quien recibe: {o.recibeNombre || "No indicado"}</strong>
+          <span>Teléfono del destinatario: {o.recibeTelefono || "No indicado"}</span>
+          <span>Dirección de entrega: {o.direccion || "No indicada"}</span>
+          {o.notas && <span>Notas: {o.notas}</span>}
+        </div>
+      )}
+
+      {showProductSummary && (
+        <div className={`order-delivered-items ${variant === "ready" ? "order-ready-items" : ""}`}>
+          <strong>{variant === "ready" ? "Productos para entregar:" : "Productos:"}</strong>
+          {(o.items || []).map((it, i) => (
+            <small key={i}>{it.nombre} × {it.cantidad}</small>
+          ))}
+        </div>
+      )}
+
       {children}
+
       <footer className="order-card-total"><span>Total del pedido</span><strong>{formatCurrency(o.total)}</strong></footer>
     </article>
   );
