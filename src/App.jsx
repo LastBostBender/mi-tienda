@@ -57,7 +57,7 @@ export default function App() {
 
       <img
         src="/icon-icon.png"
-        alt=""
+        alt="•"
         style={{
           width: "13px",
           height: "13px",
