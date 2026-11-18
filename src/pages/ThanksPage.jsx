@@ -7,7 +7,7 @@ export default function ThanksPage() {
       <CheckCircle size={52} strokeWidth={1.5} style={{ margin: "0 auto 16px", display: "block", color: "#27865d" }} />
       <p className="eyebrow">Pedido registrado</p>
       <h1>Gracias por tu pedido</h1>
-      <p>Hemos recibido tu solicitud correctamente. El administrador podrá revisar el pedido en Google Sheets.</p>
+      <p>Hemos recibido tu solicitud correctamente. </p>
       <Link className="button button-primary" to="/">Volver al catálogo</Link>
     </section>
   );
