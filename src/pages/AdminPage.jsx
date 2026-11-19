@@ -3,6 +3,54 @@ import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../utils/api";
 import { formatCurrency } from "../hooks/useCurrency";
 
+function CategoriaField({ value, onChange, categorias }) {
+  const esNueva = value !== "" && !categorias.includes(value);
+  const [modo, setModo] = useState(esNueva ? "nueva" : "select");
+
+  function handleSelect(e) {
+    if (e.target.value === "__nueva__") {
+      setModo("nueva");
+      onChange("");
+    } else {
+      setModo("select");
+      onChange(e.target.value);
+    }
+  }
+
+  function handleInput(e) {
+    onChange(e.target.value);
+  }
+
+  function cancelarNueva() {
+    setModo("select");
+    onChange("");
+  }
+
+  if (modo === "nueva") {
+    return (
+      <div style={{ display: "flex", gap: "6px" }}>
+        <input
+          autoFocus
+          placeholder="Nombre de nueva categoría"
+          value={value}
+          onChange={handleInput}
+          style={{ flex: 1 }}
+        />
+        <button type="button" className="button button-small" onClick={cancelarNueva} title="Cancelar">✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <select value={value} onChange={handleSelect}
+      style={{ width: "100%", minHeight: "42px", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg-surface)", color: value ? "var(--text-main)" : "var(--text-muted)" }}>
+      <option value="">Sin categoría</option>
+      {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+      <option value="__nueva__">＋ Nueva categoría…</option>
+    </select>
+  );
+}
+
 const EMPTY = { id: "", nombre: "", descripcion: "", precio: "", imagen_url: "", categoria: "", activo: true };
 const STATES = ["pendiente", "confirmado", "pagado", "enviado", "entregado", "cancelado"];
 
@@ -118,7 +166,7 @@ export default function AdminPage() {
               <label className="field"><span>Descripción</span><textarea rows="3" value={product.descripcion} onChange={e => setProduct({ ...product, descripcion: e.target.value })} /></label>
               <label className="field"><span>Precio *</span><input type="number" min="0" step="0.01" value={product.precio} onChange={e => setProduct({ ...product, precio: e.target.value })} required /></label>
               <label className="field"><span>Imagen URL HTTPS</span><input type="url" value={product.imagen_url} onChange={e => setProduct({ ...product, imagen_url: e.target.value })} /></label>
-              <label className="field"><span>Categoría</span><input list="cat-list" value={product.categoria} onChange={e => setProduct({ ...product, categoria: e.target.value })} placeholder="Selecciona o escribe nueva…" /><datalist id="cat-list">{categorias.map(c => <option key={c} value={c} />)}</datalist></label>
+              <div className="field"><span>Categoría</span><CategoriaField value={product.categoria} onChange={v => setProduct({ ...product, categoria: v })} categorias={categorias} /></div>
               <label className="admin-check"><input type="checkbox" checked={!!product.activo} onChange={e => setProduct({ ...product, activo: e.target.checked })} /> Disponible en catálogo</label>
               <div className="admin-actions">
                 <button className="button button-primary" disabled={busy}>Guardar</button>
