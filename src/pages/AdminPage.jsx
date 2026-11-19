@@ -42,9 +42,8 @@ function CategoriaField({ value, onChange, categorias }) {
   }
 
   return (
-    <select value={value} onChange={handleSelect}
-      style={{ width: "100%", minHeight: "42px", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg-surface)", color: value ? "var(--text-main)" : "var(--text-muted)" }}>
-      <option value="">Sin categoría</option>
+    <select value={value} onChange={handleSelect} className="categoria-select">
+      <option value="">— Selecciona una categoría —</option>
       {categorias.map(c => <option key={c} value={c}>{c}</option>)}
       <option value="__nueva__">＋ Nueva categoría…</option>
     </select>
