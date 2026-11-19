@@ -12,6 +12,44 @@ const EMPTY = {
   imagen_url: "", categoria: "", activo: true,
 };
 
+const normCat = (v) => String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function CategoriaField({ value, onChange, categorias }) {
+  const canonical = categorias.find(c => normCat(c) === normCat(value));
+  const [creating, setCreating] = useState(Boolean(value) && !canonical);
+
+  if (creating) {
+    return (
+      <div className="categoria-new">
+        <input
+          autoFocus
+          placeholder="Nombre de la nueva categoría"
+          value={value}
+          maxLength="100"
+          onChange={e => onChange(e.target.value)}
+          onBlur={() => {
+            const match = categorias.find(c => normCat(c) === normCat(value));
+            if (match) { onChange(match); setCreating(false); }
+          }}
+        />
+        <button type="button" className="admin-icon-button" title="Volver a la lista" aria-label="Volver a la lista"
+          onClick={() => { setCreating(false); onChange(""); }}><X size={18} /></button>
+      </div>
+    );
+  }
+  return (
+    <select className="categoria-select" value={canonical || ""}
+      onChange={e => {
+        if (e.target.value === "__nueva__") { setCreating(true); onChange(""); }
+        else onChange(e.target.value);
+      }}>
+      <option value="">Sin categoría</option>
+      {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+      <option value="__nueva__">+ Nueva categoría…</option>
+    </select>
+  );
+}
+
 export default function AdminPage() {
   const [token, setToken] = useState(() => sessionStorage.getItem("tienda-admin-token") || "");
   const [email, setEmail] = useState("");
@@ -124,6 +162,14 @@ export default function AdminPage() {
     finally { setBusy(false); }
   }
 
+  const categorias = useMemo(() => {
+    const seen = new Map();
+    products.forEach(p => {
+      const c = String(p.categoria || "").trim();
+      if (c && !seen.has(normCat(c))) seen.set(normCat(c), c);
+    });
+    return [...seen.values()].sort((a, b) => a.localeCompare(b, "es"));
+  }, [products]);
   const shown = useMemo(() =>
     products.filter(p => `${p.nombre} ${p.id} ${p.categoria}`.toLowerCase().includes(search.toLowerCase())),
     [products, search]
@@ -191,7 +237,7 @@ export default function AdminPage() {
             {activeEditor === "new" && (
               <div className="admin-product-item is-open">
                 <div className="admin-product-summary new-product-summary"><Package size={19} /><strong>Nuevo producto</strong></div>
-                <ProductEditor product={product} setProduct={setProduct} onSave={save} onCancel={closeEditor} busy={busy} isNew />
+                <ProductEditor categorias={categorias} product={product} setProduct={setProduct} onSave={save} onCancel={closeEditor} busy={busy} isNew />
               </div>
             )}
             {shown.map(p => {
@@ -204,7 +250,7 @@ export default function AdminPage() {
                     {isOpen ? <ChevronUp size={19} /> : <ChevronDown size={19} />}
                   </button>
                   {isOpen && (
-                    <ProductEditor product={product} setProduct={setProduct} onSave={save} onCancel={closeEditor}
+                    <ProductEditor categorias={categorias} product={product} setProduct={setProduct} onSave={save} onCancel={closeEditor}
                       onDelete={() => removeProduct(p)} onToggle={() => toggle(p)} busy={busy} isNew={false} originalProduct={p} />
                   )}
                 </div>
@@ -330,7 +376,7 @@ function OrderCard({ order: o, busy, onDelete, children, variant = "pending" }) 
   );
 }
 
-function ProductEditor({ product, setProduct, onSave, onCancel, onDelete, onToggle, busy, isNew, originalProduct }) {
+function ProductEditor({ categorias, product, setProduct, onSave, onCancel, onDelete, onToggle, busy, isNew, originalProduct }) {
   function update(field, value) { setProduct(current => ({ ...current, [field]: value })); }
   return (
     <form className="admin-product-editor" onSubmit={onSave}>
@@ -346,9 +392,9 @@ function ProductEditor({ product, setProduct, onSave, onCancel, onDelete, onTogg
       <label className="field"><span>Imagen URL HTTPS</span>
         <input type="url" value={product.imagen_url || ""} onChange={e => update("imagen_url", e.target.value)} placeholder="https://…" />
       </label>
-      <label className="field"><span>Categoría</span>
-        <input value={product.categoria || ""} onChange={e => update("categoria", e.target.value)} />
-      </label>
+      <div className="field"><span>Categoría</span>
+        <CategoriaField value={product.categoria || ""} onChange={v => update("categoria", v)} categorias={categorias} />
+      </div>
       <label className="admin-check">
         <input type="checkbox" checked={!!product.activo} onChange={e => update("activo", e.target.checked)} />
         Disponible en el catálogo

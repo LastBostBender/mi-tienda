@@ -629,3 +629,6 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+.categoria-new { display: flex; gap: 8px; align-items: center; }
+.categoria-new input { flex: 1; min-width: 0; }
