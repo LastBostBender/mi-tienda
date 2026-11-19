@@ -81,6 +81,7 @@ export default function AdminPage() {
 
   const shown = useMemo(() => products.filter(p => (p.nombre + " " + p.id + " " + p.categoria).toLowerCase().includes(search.toLowerCase())), [products, search]);
   const visibleOrders = orders.filter(o => o.estado !== "eliminado");
+  const categorias = useMemo(() => [...new Set(products.map(p => p.categoria).filter(Boolean))].sort(), [products]);
 
   if (!token) return (
     <section className="admin-login">
@@ -117,7 +118,7 @@ export default function AdminPage() {
               <label className="field"><span>Descripción</span><textarea rows="3" value={product.descripcion} onChange={e => setProduct({ ...product, descripcion: e.target.value })} /></label>
               <label className="field"><span>Precio *</span><input type="number" min="0" step="0.01" value={product.precio} onChange={e => setProduct({ ...product, precio: e.target.value })} required /></label>
               <label className="field"><span>Imagen URL HTTPS</span><input type="url" value={product.imagen_url} onChange={e => setProduct({ ...product, imagen_url: e.target.value })} /></label>
-              <label className="field"><span>Categoría</span><input value={product.categoria} onChange={e => setProduct({ ...product, categoria: e.target.value })} /></label>
+              <label className="field"><span>Categoría</span><input list="cat-list" value={product.categoria} onChange={e => setProduct({ ...product, categoria: e.target.value })} placeholder="Selecciona o escribe nueva…" /><datalist id="cat-list">{categorias.map(c => <option key={c} value={c} />)}</datalist></label>
               <label className="admin-check"><input type="checkbox" checked={!!product.activo} onChange={e => setProduct({ ...product, activo: e.target.checked })} /> Disponible en catálogo</label>
               <div className="admin-actions">
                 <button className="button button-primary" disabled={busy}>Guardar</button>
